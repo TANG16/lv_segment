@@ -10,19 +10,79 @@ N = size(IM,3); % Number of images.
 im = IM(:,:,imNo);
 mask = MASK(:,:,imNo);
 
+[rows, cols] = size(im);
 props = regionprops(mask,'Centroid');
-centerPoint = props.Centroid;
+centerRow = props.Centroid(1);
+centerCol = props.Centroid(2);
 angleResolution = 96;
 radialResolution = 56;
 imShow = insertMarker(im,props.Centroid,'o','color','red','size',1);
 
+%% cart2pol
+%    [theta,rho] = cart2pol(x,y)
+% theta = (0:1/4:2)*pi;
+% rad = 0:5;
+% [T, R] = meshgrid(theta, rad);
+% [X, Y] = pol2cart(T, R);
+
+
+maxRadius = floor(min([rows - centerRow; centerRow; cols - centerY; centerY]) - 2);
+
+[x, y] = meshgrid(centerRow - maxRadius : centerRow + maxRadius, ...
+    centerY - maxRadius : centerY + maxRadius);
+
+[theta, rho] = cart2pol(x, y);
+
+figure; imagesc(imShow) ; axis square; colormap gray
+
+subplot(221), imshow(im), axis on;
+hold on;
+subplot(221), plot(xCenter,yCenter, 'r+');
+subplot(222), warp(theta, rho, zeros(size(theta)), im);
+view(2), axis square;
+
+% These is the spacing of your radius axis (columns)
+rhoRange = linspace(0, max(rho(:)), 100);
+
+% This is the spacing of your theta axis (rows)
+thetaRange = linspace(-pi, pi, 100);
+
+% Generate a grid of all (theta, rho) coordinates in your destination image
+[T,R] = meshgrid(thetaRange, rhoRange);
+
+% Now map the values in img to your new image domain
+theta_rho_image = griddata(theta, rho, double(im), T, R);
+
+%%
+
+[rows, cols] = size(im);
+
+[X,Y] = meshgrid((1:cols) - centerCol, (1:rows) - centerRow);
+
+[theta, rho] = cart2pol(X, Y);
+
+rhoRange = linspace(0, max(rho(:)), 1000);
+thetaRange = linspace(-pi, pi, 1000);
+
+[T, R] = meshgrid(thetaRange, rhoRange);
+
+theta_rho_image = griddata(theta, rho, double(im), T, R);
+
+figure
+subplot(1,2,1);
+imagesc(im);
+title('Original Image'); axis image; colormap gray
+
+subplot(1,2,2);
+imagesc(theta_rho_image);
+title('Polar Image'); axis image; colormap gray
 %% function polarIm = remapImageToPolarCoordinates(im, centerPoint, ...
 %     angleResolution, radialResolution)
 
 [Y, X, z] = find(im);
-centerX = centerPoint(1);
+centerRow = centerPoint(1);
 centerY = centerPoint(2);
-X = X - centerX;
+X = X - centerRow;
 Y = Y - centerY;
 theta = atan2(Y,X);
 rho = sqrt(X.^2+Y.^2);
@@ -54,15 +114,15 @@ subplot(1,2,2); imagesc(polarIm) ; axis image; colormap gray
 [rows, cols] = size(im);
 
 if exist('centerPoint','var') == 0
-    centerX = round(rows/2);
+    centerRow = round(rows/2);
     centerY = round(cols/2);
 else
-    centerX = centerPoint(1);
+    centerRow = centerPoint(1);
     centerY = centerPoint(2);
 end % Extract centerpoint, set to middle of the image if input is missing.
 
 if exist('radius','var') == 0
-    nRadius = floor(min([rows - centerX; centerX; cols - centerY; centerY]) - 1);
+    nRadius = floor(min([rows - centerRow; centerRow; cols - centerY; centerY]) - 1);
 end % Sample the image to the edge from the centerpoint if input is missing.
 
 if exist('nAngle','var') == 0
@@ -82,7 +142,7 @@ insertCol = 1;
 for r = 0:nRadius
     for theta = 0:2*pi/nAngle : 2*pi - 2*pi/nAngle'
         polarIm(r + 1, insertCol) = im(round(centerY + r*sin(theta)), ...
-            round(centerX + r*cos(theta)));
+            round(centerRow + r*cos(theta)));
         insertCol = insertCol + 1;
     end
 end
