@@ -1,21 +1,8 @@
-function polarIm = imToPolarCoordinates(im, centerPoint, nRadius, nAngle)
-% IMGPOLARCOORD converts a given image from cartesian coordinates to polar
-% coordinates.
-%
-% Input:
-%        img  : bidimensional image.
-%      radius : radius length (# of pixels to be considered).
-%      angle  : # of angles to be considered for decomposition.
-%
-% Output:
-%       pcimg : polar coordinate image.
+function polarIm = imToPolarCoordinates(im, centerPoint, nRadius, nAngle, ...
+    interpolationMethod)
+%IMTOPOLARCOORDINATES Summary of this function goes here
+%   Detailed explanation goes here
 
-if nargin < 1
-    error('Please specify an image.');
-else if nargin < 2
-        error('Please specify a centerpoint.');
-    end
-end
 [rows, cols] = size(im);
 
 if exist('centerPoint','var') == 0
@@ -26,28 +13,30 @@ else
     centerY = centerPoint(2);
 end % Extract centerpoint, set to middle of the image if input is missing.
 
-if exist('radius','var') == 0
-    nRadius = floor(min([rows - centerX; centerX; cols - centerY; centerY]) - 1);
+if exist('nRadius','var') == 0
+    nRadius = 56;
 end % Sample the image to the edge from the centerpoint if input is missing.
 
 if exist('nAngle','var') == 0
     nAngle = 96;  % Taken from referred article.
 end % Set angle samples if input is missing.
 
+if exist('interpolationMethod','var') == 0
+    interpolationMethod = 'nearest';
+end
 
-%    [theta,rho] = cart2pol(x,y)
-% theta = (0:1/4:2)*pi;
-% rad = 0:5;
-% [T, R] = meshgrid(theta, rad);
-% [X, Y] = pol2cart(T, R);
+% This should be set to a certain max.
+% rLimit = floor(min([rows - centerY; centerY; cols - centerX; centerX]) - 1);
+rLimit = 25;
 
-
-% Sample the image in polar coordinates.
+polarIm = NaN(nRadius, nAngle);
 insertCol = 1;
-for r = 0:nRadius
-    for theta = 0:2*pi/nAngle : 2*pi - 2*pi/nAngle'
-        polarIm(r + 1, insertCol) = im(round(centerY + r*sin(theta)), ...
-            round(centerX + r*cos(theta)));
-        insertCol = insertCol + 1;
-    end
+% Sample the image in polar coordinates.
+for theta = 0:2*pi/nAngle : 2*pi - 2*pi/nAngle
+    polarIm(:,insertCol) = improfile(im,...
+        [centerX, centerX + rLimit*cos(theta)], ...
+        [centerY, centerY + rLimit*sin(theta)], ...
+        nRadius, interpolationMethod)';
+    % Interpolation method bilinear and bicubic yields similar results.
+    insertCol = insertCol + 1;
 end

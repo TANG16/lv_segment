@@ -7,34 +7,6 @@ IM = cat(3,Outdata.SYSIM, Outdata.DIAIM);
 MASK = cat(3,Outdata.SYSMASK, Outdata.DIAMASK);
 N = size(IM,3); % Number of images.
 
-%% Extract center points
-centroids = zeros(N,2);
-
-for loop = 1:N
-    mask = MASK(:,:,loop);
-    imsize = size(mask,1);
-    imagesc(mask)
-    drawnow;
-    pause;
-    %props = regionprops(mask,'Centroid');
-end
-%% Checking augmentations
-
-A = outdata.systolicIm(:,:,12);
-figure(1)
-imagesc(A)
-B = imrotate(A,5);
-figure(2)
-imagesc(B)
-
-x = 10; y = 20;
-B = imtranslate(A, [x y]);
-figure(3)
-imagesc(B)
-
-% One could perform edge detection on the mask to get a contour, thus
-% allowing one to draw the contour on the images as well.
-
 %% Show images
 figure(1)
 for loop = 1:N
@@ -64,34 +36,37 @@ for loop = 1:N
     pause;
 end
 
-%% imgpolarcoord
+%% Test image polar remapping
 
-mask = MASK(:,:,3);
-im = double(IM(:,:,13));
+imNo = 25;
+load lv_contours.mat
+IM = cat(3,Outdata.SYSIM, Outdata.DIAIM);
+MASK = cat(3,Outdata.SYSMASK, Outdata.DIAMASK);
+im = IM(:,:,imNo);
+mask = MASK(:,:,imNo);
+
 props = regionprops(mask,'Centroid');
-figure;
+centerX = props.Centroid(1);
+centerY = props.Centroid(2);    
+nAngle = 96;
+nRadius = 56;
+
 imShow = insertMarker(im,props.Centroid,'o','color','red','size',1);
-
-pcimg = remapImageToPolarCoordinates(im, props.Centroid, 128, 128);
-
-%%
-figure;
-subplot(2,2,1); imagesc(imShow);
-colormap gray; axis image; title('Input image');
-subplot(2,2,2); imagesc(pcimg);
-colormap gray; axis image; title('Polar Input image');
-
-%% PolarToIm
-
-im = IM(:,:,2);
-% im = double(im)/255.0;
-figure(1); imagesc(im);
-colormap gray; axis image; title('Input image');
-
-imP = ImToPolar(im, 0, 1, 50, 200);
-figure(2); imagesc(imP);
-colormap gray; axis image; title('Polar mapped image');
-
-imR = PolarToIm(imP, 0.6, 1, 250, 250);
-figure(3); imshow(imR);
-colormap gray; axis image; title('Reconstructed image');
+polarIm = imToPolarCoordinates(im, [centerX, centerY], nRadius, nAngle);
+interpolationMode = cell(1,3);
+interpolationMode{1,1} = 'nearest';
+interpolationMode{1,2} = 'bilinear'; 
+interpolationMode{1,3} = 'bicubic';
+for i = 1:3
+    
+    polarIm = imToPolarCoordinates(im, [centerX, centerY], nRadius, nAngle,...
+        interpolationMode{i});
+    figure;
+    suptitle(['Polar remapping using ' interpolationMode{i} ' interpolation']);
+    subplot(2,2,1); imagesc(im); colormap gray; axis image;
+    title('Input image');
+    subplot(2,2,2); imshow(imShow); colormap gray; axis image;
+    title('View Centerpoint');
+    subplot(2,2,3:4); imagesc(polarIm); colormap gray; axis image;
+    title('Polar Input image'); colorbar; caxis([0 0.6]);
+end
