@@ -1,42 +1,41 @@
-function polarIm = imToPolarCoordinates(im, centerPoint, nRadius, nAngle, ...
-    interpolationMethod)
-%IMTOPOLARCOORDINATES Summary of this function goes here
-%   Detailed explanation goes here
+function [polarIm, polarEndoContour, polarEpiContour] = imToPolarCoordinates( ...
+    im, endoContour, epiContour, centerPoint, rLimit, ...
+    nRadius, nAngle, interpolationMethod)
+%
 
-[rows, cols] = size(im);
+if nargin < 4
+    error('Not enough input arguments')
+end
 
-if exist('centerPoint','var') == 0
-    centerX = round(rows/2);
-    centerY = round(cols/2);
-else
-    centerX = centerPoint(1);
-    centerY = centerPoint(2);
-end % Extract centerpoint, set to middle of the image if input is missing.
+if nargin < 5
+    rLimit = 25;
+    % rLimit = floor(min([rows - centerY; centerY; cols - centerX; centerX]) - 1);
+end
 
-if exist('nRadius','var') == 0
-    nRadius = 56;
+if nargin < 6
+    nRadius = 56;   % Taken from article.
 end % Sample the image to the edge from the centerpoint if input is missing.
 
-if exist('nAngle','var') == 0
-    nAngle = 96;  % Taken from referred article.
+if nargin < 7
+    nAngle = 96;  % Taken from article.
 end % Set angle samples if input is missing.
 
-if exist('interpolationMethod','var') == 0
+if nargin < 8
     interpolationMethod = 'bilinear';
 end
 
-% This should be set to a certain max.
-% rLimit = floor(min([rows - centerY; centerY; cols - centerX; centerX]) - 1);
-rLimit = 25;
-
+% Preallocate output.
 polarIm = NaN(nRadius, nAngle);
+polarEndoContour = NaN(2,nAngle);
+polarEpiContour = NaN(2,nAngle);
+
 insertCol = 1;
 % Sample the image in polar coordinates.
 for theta = 0:2*pi/nAngle : 2*pi - 2*pi/nAngle
-    polarIm(:,insertCol) = improfile(im,...
+    polarIm(:,insertCol) = improfile(im, ...
         [centerX, centerX + rLimit*cos(theta)], ...
         [centerY, centerY + rLimit*sin(theta)], ...
         nRadius, interpolationMethod)';
-    % Interpolation method bilinear and bicubic yields similar results.
+%     polarEndoContour() = 
     insertCol = insertCol + 1;
 end

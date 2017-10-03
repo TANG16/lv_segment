@@ -1,33 +1,28 @@
-%% Initialize
-% Create X x Y x N matrixes of images and masks, these should probably be
-% entered into the function as input instead, but for now we do it like
-% this.
+%% Draw images with segmentation and centerpoint.
 load lv_contours.mat
-IM = cat(3,Outdata.SYSIM, Outdata.DIAIM);
-MASK = cat(3,Outdata.SYSMASK, Outdata.DIAMASK);
-N = size(IM,3); % Number of images.
+endocolor = 'r-';
+epicolor = 'g-';
 
-%% Show images with segmentation
-figure(2)
-
-for loop = 1:N
-    im = IM(:,:,loop);
-    mask = MASK(:,:,loop);
-    imsize = size(im,1);
+for nPat = 4:length(outdata)
+    IM = outdata(nPat).DiaIm;
+    for nIm = 1:size(IM,3)
+        h = drawLV(IM(:,:,nIm), ...
+            outdata(nPat).DiaEndo(:,:,nIm), ...
+            outdata(nPat).DiaEpi(:,:,nIm), ...
+            ['Diastolic LV for patient ' num2str(nPat) ', slice ' num2str(nIm)]);
+        pause;
+    end
+    close(h);
     
-    props = regionprops(mask,'Centroid');
-    centerX = props.Centroid(1);
-    centerY = props.Centroid(2); 
-    
-    imagesc(im); colormap gray; axis image; colorbar; caxis([0 0.6]);
-    hold on
-    colour = cat(3, ones(imsize), ...
-        ones(imsize), ones(imsize));
-    h = imagesc(colour);
-    set(h, 'AlphaData', mask.*0.5);
-    plot(centerX, centerY, 'Marker', '*', 'Color', [1 0 0], 'MarkerSize', 10);
-    drawnow;
-    pause;
+    IM = outdata(nPat).SysIm;
+    for nIm = 1:size(IM,3)
+        h = drawLV(outdata(nPat).SysIm(:,:,nIm), ...
+            outdata(nPat).SysEndo(:,:,nIm), ...
+            outdata(nPat).SysEpi(:,:,nIm), ...
+            ['Systolic LV for patient ' num2str(nPat) ', slice' num2str(nIm)]);
+        pause;
+    end
+    close(h);
 end
 
 %% Test image polar remapping
@@ -41,14 +36,14 @@ mask = MASK(:,:,imNo);
 
 props = regionprops(mask,'Centroid');
 centerX = props.Centroid(1);
-centerY = props.Centroid(2);    
+centerY = props.Centroid(2);
 nAngle = 96;
 nRadius = 56;
 
 polarIm = imToPolarCoordinates(im, [centerX, centerY], nRadius, nAngle);
 interpolationMode = cell(1,3);
 interpolationMode{1,1} = 'nearest';
-interpolationMode{1,2} = 'bilinear'; 
+interpolationMode{1,2} = 'bilinear';
 interpolationMode{1,3} = 'bicubic';
 for i = 1:3
     
