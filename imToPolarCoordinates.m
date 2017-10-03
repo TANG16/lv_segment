@@ -22,7 +22,7 @@ if exist('nAngle','var') == 0
 end % Set angle samples if input is missing.
 
 if exist('interpolationMethod','var') == 0
-    interpolationMethod = 'nearest';
+    interpolationMethod = 'bilinear';
 end
 
 % This should be set to a certain max.
