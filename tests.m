@@ -3,24 +3,23 @@ load lv_contours.mat
 
 for nPat = 4:length(outdata)
     IM = outdata(nPat).DiaIm;
+    figure(1);
     for nIm = 1:size(IM,3)
-        h = drawLV(IM(:,:,nIm), ...
+        drawLV(IM(:,:,nIm), ...
             outdata(nPat).DiaEndo(:,:,nIm), ...
             outdata(nPat).DiaEpi(:,:,nIm), ...
             ['Diastolic LV for patient ' num2str(nPat) ', slice ' num2str(nIm)]);
         pause;
     end
-    close(h);
     
     IM = outdata(nPat).SysIm;
     for nIm = 1:size(IM,3)
-        h = drawLV(outdata(nPat).SysIm(:,:,nIm), ...
+        drawLV(outdata(nPat).SysIm(:,:,nIm), ...
             outdata(nPat).SysEndo(:,:,nIm), ...
             outdata(nPat).SysEpi(:,:,nIm), ...
             ['Systolic LV for patient ' num2str(nPat) ', slice' num2str(nIm)]);
         pause;
     end
-    close(h);
 end
 
 %% Test image polar remapping
@@ -42,7 +41,7 @@ for nPat = 1 %:length(outdata)
             outdata(nPat).DiaEndo(:,:,nIm), ...
             outdata(nPat).DiaEpi(:,:,nIm), ...
             ['Diastolic LV for patient ' num2str(nPat) ', slice ' num2str(nIm)]);
-%         movegui(h1,'northwest');
+        %         movegui(h1,'northwest');
         
         [polarIm, polarContour] = remapToPolarCoordinates(IM(:,:,nIm), ...
             outdata(nPat).DiaEndo(:,:,nIm), outdata(nPat).DiaEpi(:,:,nIm), ...
@@ -56,9 +55,9 @@ for nPat = 1 %:length(outdata)
         plot(1:size(polarIm,2), polarContour(:,1), endoColor);
         plot(1:size(polarIm,2), polarContour(:,2), epiColor);
         title(['Polar diastolic LV for patient ' num2str(nPat) ', slice ' num2str(nIm)]);
-%         movegui(h2,'southwest');
+        %         movegui(h2,'southwest');
         drawnow;
-%         disp('waiting');
+        %         disp('waiting');
         %         pause;
     end
     %     close(h1);
@@ -73,7 +72,7 @@ for nPat = 1 %:length(outdata)
             outdata(nPat).SysEndo(:,:,nIm), ...
             outdata(nPat).SysEpi(:,:,nIm), ...
             ['Systolic LV for patient ' num2str(nPat) ', slice' num2str(nIm)]);
-%         movegui(h3, 'northeast');
+        %         movegui(h3, 'northeast');
         
         %         h4 = figure(13);
         figure;
@@ -84,9 +83,9 @@ for nPat = 1 %:length(outdata)
         plot(1:size(polarIm,2), polarContour(:,1), endoColor);
         plot(1:size(polarIm,2), polarContour(:,2), epiColor);
         title(['Polar systolic LV for patient ' num2str(nPat) ', slice ' num2str(nIm)]);
-%         movegui(h4,'southeast');
+        %         movegui(h4,'southeast');
         drawnow;
-%         disp('waiting');
+        %         disp('waiting');
         %         pause;
     end
     %     close(h3);
