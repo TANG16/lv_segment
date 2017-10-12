@@ -1,27 +1,30 @@
 function [polarIm, polarContour] = remapToPolarCoordinates( ...
-    im, endoContour, epiContour, centerX , centerY, ...
+    im, endoContour, epiContour, lvCenter, ...
     radius, nRadPoints, nAngle, interpolationMethod)
 %
 
-if nargin < 5
+if nargin < 4
     error('Not enough input arguments')
 end
 
-if nargin < 6
+if nargin < 5
     radius = 25; % Investigate what limit is suitable.
 end % Set radius if not specified.
 
-if nargin < 7
+if nargin < 6
     nRadPoints = 56;   % Taken from article.
 end % Sample the image to the edge from the centerpoint if not specified.
 
-if nargin < 8
+if nargin < 7
     nAngle = 96;  % Taken from article.
 end % Set angle samples if not specified
 
-if nargin < 9
+if nargin < 8
     interpolationMethod = 'nearest';
 end % Set interpolation method if not specified.
+
+centerX = lvCenter(1);
+centerY = lvCenter(2);
 
 % Preallocate polar image and contour.
 polarIm = NaN(nRadPoints, nAngle);
