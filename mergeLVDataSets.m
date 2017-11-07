@@ -1,5 +1,6 @@
 function mergeLVDataSets
 %% Merge data sets.
+% Do this if needed!!
 
 % Select a folder to load mat files from.
 loadPath = uigetdir('*.mat', ...

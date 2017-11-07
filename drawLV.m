@@ -1,8 +1,7 @@
-function drawLV(im, endoContour, epiContour, plotTitle)
+function drawLV(im, endoContour, epiContour, centerX, centerY, plotTitle)
 
 endoColor = 'r-';
 epiColor = 'g-';
-[centerX, centerY] = findLVCenter(endoContour(:,:));
 
 imagesc(im); colormap gray; axis image; colorbar; caxis([0 0.6]);
 hold on

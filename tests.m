@@ -1,27 +1,3 @@
-%% Draw images with segmentation and centerpoint.
-load lv_contours.mat
-
-for nPat = 4:length(outdata)
-    IM = outdata(nPat).DiaIm;
-    figure(1);
-    for nIm = 1:size(IM,3)
-        drawLV(IM(:,:,nIm), ...
-            outdata(nPat).DiaEndo(:,:,nIm), ...
-            outdata(nPat).DiaEpi(:,:,nIm), ...
-            ['Diastolic LV for patient ' num2str(nPat) ', slice ' num2str(nIm)]);
-        pause;
-    end
-    
-    IM = outdata(nPat).SysIm;
-    for nIm = 1:size(IM,3)
-        drawLV(outdata(nPat).SysIm(:,:,nIm), ...
-            outdata(nPat).SysEndo(:,:,nIm), ...
-            outdata(nPat).SysEpi(:,:,nIm), ...
-            ['Systolic LV for patient ' num2str(nPat) ', slice' num2str(nIm)]);
-        pause;
-    end
-end
-
 %% Test image polar remapping
 clear all
 close all
