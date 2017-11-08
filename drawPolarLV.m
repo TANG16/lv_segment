@@ -17,4 +17,5 @@ colorbar; caxis([0 0.6]);
 plot(1:size(im,2), endoContour, endoColor);
 plot(1:size(im,2), epiContour, epiColor);
 drawnow;
+pause;
 end

@@ -6,24 +6,20 @@ if nargin < 1
 end
 
 % Radial and angular sampling.
-% Taken from the article "Convolutional neural network for short-axis left 
+% Taken from the article "Convolutional neural network for short-axis left
 % ventricle segmentation in cardiac cine MR sequences" Tan et al, 2017.
-nAngle = 96;
+nAngPoints = 96;
 nRadPoints = 56;
-
-% Cropping radius from centerpoint.
-radius = 25;
-
-% Interpolation method.
-interpolationMethod = 'nearest';
+radius = 30; % Cropping radius from centerpoint.
+interpolationMethod = 'bilinear';
 
 % Resample image set.
 imSet = resampleImages(imSet, resolution);
 
 % Initiate polar representations.
 nImages = size(imSet.IM,3);
-polarIm = NaN(nRadPoints, nAngle);
-polarContour = NaN(2, nAngle);
+polarIm = NaN(nRadPoints, nAngPoints);
+polarContour = NaN(2, nAngPoints);
 
 % Create the save folder.
 if exist(savePath, 'dir') ~= 7
@@ -33,8 +29,8 @@ if exist(savePath, 'dir') ~= 7
 end
 
 for iImage = 1:nImages
-    % Clean mask.
-    polarLVMask = zeros(nRadPoints, nAngle);
+    missingEpiPoints = [];           % Failed intersection check.
+    missingEndoPoints = [];
     
     % Check that we aren't cropping outside the image.
     if radius > min([imSet.Center(iImage,1), ...
@@ -46,7 +42,7 @@ for iImage = 1:nImages
     
     iInsert = 1;    % Radial counter.
     % Sample the image in polar coordinates.
-    for iTheta = 0:2*pi/nAngle : 2*pi - 2*pi/nAngle
+    for iTheta = 0:2*pi/nAngPoints : 2*pi - 2*pi/nAngPoints
         rLineX = [imSet.Center(iImage,1), imSet.Center(iImage,1) + radius*sin(iTheta)];
         rLineY = [imSet.Center(iImage,2), imSet.Center(iImage,2) + radius*cos(iTheta)];
         
@@ -58,40 +54,67 @@ for iImage = 1:nImages
         % Endoardial.
         % Find the radial distance.
         [endoX, endoY] = intersections(rLineX, rLineY, imSet.Endo(:,1,iImage), ...
-            imSet.Endo(:,2,iImage), false);
-        % Calculate the distance from the centerpoint.
-        polarContour(1, iInsert) = sqrt((endoX - imSet.Center(iImage,1))^2 + ...
-            (endoY - imSet.Center(iImage,2))^2)/(radius/nRadPoints);
-        
+            imSet.Endo(:,2,iImage));
+        if isempty(endoX) || isempty(endoY)
+            polarContour(1, iInsert) = NaN;
+            missingEndoPoints = [missingEndoPoints iInsert];
+        else
+            % Calculate the distance from the centerpoint.
+            polarContour(1, iInsert) = sqrt((endoX - imSet.Center(iImage,1))^2 + ...
+                (endoY - imSet.Center(iImage,2))^2)/(radius/nRadPoints);
+        end
         % Epicardial.
         [epiX, epiY] = intersections(rLineX, rLineY, imSet.Epi(:,1,iImage), ...
-            imSet.Epi(:,2,iImage), false);
-        % hantering om intersections inte lyckas.
-        
-        polarContour(2, iInsert) = sqrt((epiX - imSet.Center(iImage,1))^2 + ...
-            (epiY - imSet.Center(iImage,2))^2)/(radius/nRadPoints);
-        
-        % Generate polar LV Mask using the polar contour.
-        polarLVMask(round(polarContour(1, iInsert)) : ...
-            round(polarContour(2, iInsert)), iInsert) = 1;
-        
+            imSet.Epi(:,2,iImage));
+        if isempty(epiX) || isempty(epiY)
+            polarContour(2, iInsert) = NaN;
+            missingEpiPoints = [missingEpiPoints iInsert];
+        else
+            polarContour(2, iInsert) = sqrt((epiX - imSet.Center(iImage,1))^2 + ...
+                (epiY - imSet.Center(iImage,2))^2)/(radius/nRadPoints);
+        end
         iInsert = iInsert + 1;
     end
+    
+    % Interpolate the missing contour points.
+    if size(missingEndoPoints,2) > 0
+        if size(missingEndoPoints,2) > 10
+            disp('Too few intersecting points, skipping');
+            continue;
+        end
+        angInd = 1:nAngPoints;
+        polarContour(1,:) = interp1(angInd(~isnan(polarContour(1,:))), ...
+            polarContour(1,~isnan(polarContour(1,:))), angInd);
+    end
+    if size(missingEpiPoints,2) > 0
+        if size(missingEpiPoints,2) > 10
+            disp('Too few intersecting points, skipping');
+            continue;
+        end
+        angInd = 1:nAngPoints;
+        polarContour(2,:) = interp1(angInd(~isnan(polarContour(2,:))), ...
+            polarContour(2,~isnan(polarContour(2,:))), angInd);
+    end
+    
+    % Generate polar LV Mask using the polar contour.
+    maskX = [polarContour(1,:) flip(polarContour(2,:))];
+    maskY = [linspace(1, nAngPoints, nAngPoints) linspace(nAngPoints, 1, nAngPoints)];
+    polarLVMask = poly2mask(maskY, maskX, nRadPoints, nAngPoints);
     
     % Save the images.
     imwrite(polarIm, fullfile(savePath, 'images', ...
         [imSet.DataSetName '_' imSet.FileName '_' num2str(iImage) '.png']), 'png');
     imwrite(polarLVMask, fullfile(savePath, 'labels', ...
-        [imSet.DataSetName '_' imSet.FileName '_' num2str(iImage) '.png']), 'png'); 
+        [imSet.DataSetName '_' imSet.FileName '_' num2str(iImage) '.png']), 'png');
     
     if (~silent)
         drawPolarLV(polarIm, ...
-            polarContour(:,1), polarContour(:,2), ...
-            ['Diastolic polar LV' num2srt(iImage)]);
+            polarContour(1,:), polarContour(2,:), ...
+            ['Polar Image for dataset ' imSet.DataSetName ', file ' ...
+            imSet.FileName '_' num2str(iImage)]);
     end
 end
 
-    
 %-----------------------------------
 function imSet = resampleImages(imSet, resolution)
 %-----------------------------------
