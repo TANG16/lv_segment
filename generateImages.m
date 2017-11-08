@@ -1,4 +1,78 @@
+%-----------------------------------
+function generateImages
+%-----------------------------------
+% Generate image data set by polar remapping, resampling and generating
+% ground truth masks, then saving them to a database file compatible with
+% the caffe framework.
+
+silent = 1;
+resolution = 1.5;
+
+loadPath = uigetdir(pwd, ...
+    'Select a .mat file containing images and contours.');
+
+savePath = uigetdir(pwd, ...
+    'Select a folder to save processed images to.');
+
+if isequal(loadPath,0) || isequal(savePath,0)
+    failed('No load and/or save path chosen. Aborted.');
+    return;
+end
+
+filesInDir = dir([loadPath filesep '*.mat']);
+fileNames = extractfield(filesInDir, 'name');
+nFiles = length(fileNames);
+
+h = waitbar(0,'Processing images, please wait...');
+for iFile = 1:nFiles
+    % Load data set.
+    load([loadPath filesep fileNames{iFile}],'-mat');
+    
+    % Save normal images.
+    arrayfun(@(x) saveImages(x, resolution, ...
+        fullfile(savePath, '/systolic'), silent), systolic);
+    arrayfun(@(x) saveImages(x, resolution, ...
+        fullfile(savePath, '/diastolic'), silent), diastolic);
+    
+    % Generate and save polar images.
+    arrayfun(@(x) savePolarImages(x, resolution, ...
+        fullfile(savePath, '/systolic'), silent), systolic);
+    arrayfun(@(x) savePolarImages(x, resolution, ...
+        fullfile(savePath, '/diastolic'), silent), diastolic);
+    
+    waitbar(iFile/nFiles);
+end
+close(h);
+end
+
+%-----------------------------------
+function saveImages(imSet, resolution, savePath, silent)
+%-----------------------------------
+mkdir(fullfile(savePath, 'normal', 'images'));
+mkdir(fullfile(savePath, 'normal', 'labels'));
+
+% imSet = resampleImages(imSet, resolution);
+
+for iImage = 1:nImages
+    % Crop image.
+    im = imSet.IM(:,:,iImage);
+    
+    % Generate mask.
+    mask = poly2mask([imSet.Endo(:,1,iImage) imSet.Epi(:,1,iImage)], ...
+        [imSet.Endo(:,2,iImage) imSet.Epi(:,2,iImage)], ...
+        size(imSet.IM,1),size(imSet.IM,2));
+    
+    % Save image and mask
+    saveImage(im, fullfile(savePath, 'images', ...
+        [imSet.DataSetName '_' imSet.FileName '_' num2str(iImage)]));
+    saveImage(mask, fullfile(savePath, 'labels', ...
+        [imSet.DataSetName '_' imSet.FileName '_' num2str(iImage)]));
+end
+end
+
+%-----------------------------------
 function savePolarImages(imSet, resolution, savePath, silent)
+%-----------------------------------
 % Also resamples the images.
 
 if nargin < 1
@@ -23,10 +97,8 @@ polarContour = NaN(2, nAngPoints);
 
 % Create the save folder.
 if exist(savePath, 'dir') ~= 7
-    mkdir(savePath);
-    mkdir(fullfile(savePath, 'images'));
-    mkdir(fullfile(savePath, 'labels'));
-    
+    mkdir(fullfile(savePath, 'polar', 'images'));
+    mkdir(fullfile(savePath, 'polar', 'labels'));
 end
 
 for iImage = 1:nImages
@@ -42,6 +114,7 @@ for iImage = 1:nImages
     end
     
     iInsert = 1;    % Radial counter.
+    
     % Sample the image in polar coordinates.
     for iTheta = 0:2*pi/nAngPoints : 2*pi - 2*pi/nAngPoints
         rLineX = [imSet.Center(iImage,1), imSet.Center(iImage,1) + radius*sin(iTheta)];
@@ -51,22 +124,25 @@ for iImage = 1:nImages
         polarIm(:,iInsert) = improfile(imSet.IM(:,:,iImage), rLineY, rLineX, ...
             nRadPoints, interpolationMethod)';
         
-        % Find the radial distances to the endo- and epicardial contours.
-        % Endoardial.
-        % Find the radial distance.
-        [endoX, endoY] = intersections(rLineX, rLineY, imSet.Endo(:,1,iImage), ...
-            imSet.Endo(:,2,iImage));
+        % ------ Endocardial ------
+        % Find the position where a line from the center intersectswith the
+        % endocardium.
+        [endoX, endoY] = intersections(rLineX, rLineY, ...
+            imSet.Endo(:,1,iImage), imSet.Endo(:,2,iImage));
+        
+        % Check if the instersection was found.
         if isempty(endoX) || isempty(endoY)
             polarContour(1, iInsert) = NaN;
             missingEndoPoints = [missingEndoPoints iInsert];
         else
-            % Calculate the distance from the centerpoint.
+            % Calculate the radial distance.
             polarContour(1, iInsert) = sqrt((endoX - imSet.Center(iImage,1))^2 + ...
                 (endoY - imSet.Center(iImage,2))^2)/(radius/nRadPoints);
         end
-        % Epicardial.
-        [epiX, epiY] = intersections(rLineX, rLineY, imSet.Epi(:,1,iImage), ...
-            imSet.Epi(:,2,iImage));
+        
+        % ------ Epicardial ------
+        [epiX, epiY] = intersections(rLineX, rLineY, ...
+            imSet.Epi(:,1,iImage), imSet.Epi(:,2,iImage));
         if isempty(epiX) || isempty(epiY)
             polarContour(2, iInsert) = NaN;
             missingEpiPoints = [missingEpiPoints iInsert];
@@ -77,7 +153,7 @@ for iImage = 1:nImages
         iInsert = iInsert + 1;
     end
     
-    % Interpolate the missing contour points.
+    % Interpolate missing contour points.
     if size(missingEndoPoints,2) > 0
         if size(missingEndoPoints,2) > 10
             disp('Too few intersecting points, skipping');
@@ -103,10 +179,10 @@ for iImage = 1:nImages
     polarLVMask = poly2mask(maskY, maskX, nRadPoints, nAngPoints);
     
     % Save the images.
-    imwrite(polarIm, fullfile(savePath, 'images', ...
-        [imSet.DataSetName '_' imSet.FileName '_' num2str(iImage) '.png']), 'png');
-    imwrite(polarLVMask, fullfile(savePath, 'labels', ...
-        [imSet.DataSetName '_' imSet.FileName '_' num2str(iImage) '.png']), 'png');
+    saveImage(polarIm, fullfile(savePath, 'images', ...
+        [imSet.DataSetName '_' imSet.FileName '_' num2str(iImage)]));
+    saveImage(polarLVMask, fullfile(savePath, 'labels', ...
+        [imSet.DataSetName '_' imSet.FileName '_' num2str(iImage)]));
     
     if (~silent)
         drawPolarLV(polarIm, ...
@@ -114,6 +190,21 @@ for iImage = 1:nImages
             ['Polar Image for dataset ' imSet.DataSetName ', file ' ...
             imSet.FileName '_' num2str(iImage)]);
     end
+end
+end
+
+%-----------------------------------
+function saveImage(im, path)
+%-----------------------------------
+
+imwrite(im, fullfile(savePath, [path '.png'], 'png'));
+
+end
+
+%-----------------------------------
+function generateMask(im, contourX, contourY)
+%-----------------------------------
+%Not sure if necessary.
 end
 
 %-----------------------------------
@@ -138,6 +229,7 @@ imSet.Center = resamplehelper(f,imSet.Center);
 
 % Resample resolution.
 imSet.Resolution = imSet.Resolution/f;
+end
 
 %-------------------------------
 function x = resamplehelper(f,x)
@@ -167,6 +259,7 @@ else
         end;
     end;
 end;
+end
 
 %--------------------------------------
 function newvol = upsamplevolume(f,vol)
@@ -205,3 +298,4 @@ for tloop=1:size(vol,3)
         end;
     end;
 end;
+end
