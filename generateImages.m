@@ -9,10 +9,10 @@ silent = 1;
 resolution = 1.5;
 
 loadPath = uigetdir(pwd, ...
-    'Select a .mat file containing images and contours.');
+    'Select a folder of .mat-files containing data exported by plugin_exportlvcontours.');
 
 savePath = uigetdir(pwd, ...
-    'Select a folder to save processed images to.');
+    'Select a folder to save the images into.');
 
 if isequal(loadPath,0) || isequal(savePath,0)
     failed('No load and/or save path chosen. Aborted.');
@@ -53,6 +53,8 @@ mkdir(fullfile(savePath, 'normal', 'labels'));
 
 % imSet = resampleImages(imSet, resolution);
 imSet = cropImages(imSet);
+
+% Mean variance equalization
 
 for iImage = 1:nImages
     % Crop image.
