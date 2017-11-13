@@ -120,7 +120,7 @@ nSkipped = 0;
 % imSet = resampleImages(imSet, resolution);
 nImages = size(imSet.IM,3);
 
-% Create the save folder.
+% Create the save folder if it does not already exist.
 if exist(savePath, 'dir') ~= 7
     mkdir(fullfile(savePath, 'images'));
     mkdir(fullfile(savePath, 'labels'));
@@ -129,8 +129,6 @@ end
 for iImage = 1:nImages
     polarIm = NaN(nRadPoints, nAngPoints);
     polarContour = NaN(2, nAngPoints);
-    missingEpiPoints = [];           % Failed intersection check.
-    missingEndoPoints = [];
     
     % Check that we aren't cropping outside the image.
     if radius > min([imSet.Center(1,iImage), ...
@@ -160,10 +158,7 @@ for iImage = 1:nImages
             imSet.Endo(:,1,iImage), imSet.Endo(:,2,iImage));
         
         % Check if the instersection was found.
-        if length(endoX) ~= 1 || length(endoY) ~= 1
-            polarContour(1, iInsert) = NaN;
-            missingEndoPoints = [missingEndoPoints iInsert];
-        else
+        if length(endoX) == 1 || length(endoY) == 1
             % Calculate the radial distance.
             polarContour(1, iInsert) = sqrt((endoX - imSet.Center(1,iImage))^2 + ...
                 (endoY - imSet.Center(2,iImage))^2)/(radius/nRadPoints);
@@ -172,43 +167,44 @@ for iImage = 1:nImages
         % ------ Epicardial ------
         [epiX, epiY] = intersections(rLineX, rLineY, ...
             imSet.Epi(:,1,iImage), imSet.Epi(:,2,iImage));
-        if length(epiX) ~= 1 || length(epiY) ~= 1
-            polarContour(2, iInsert) = NaN;
-            missingEpiPoints = [missingEpiPoints iInsert];
-        else
+        if length(epiX) == 1 || length(epiY) == 1
             polarContour(2, iInsert) = sqrt((epiX - imSet.Center(1,iImage))^2 + ...
                 (epiY - imSet.Center(2,iImage))^2)/(radius/nRadPoints);
         end
         iInsert = iInsert + 1;
     end
     
-    % Interpolate missing contour points.
-    if size(missingEndoPoints,2) > 0
-        if size(missingEndoPoints,2) > 10
+    % Check missing contour points.
+    if any(isnan(polarContour))
+        angInd = 1:nAngPoints;
+        % Skip image if more than 10% of the total contour points are missing.
+        if sum(isnan(polarContour(:,1))) > 10
             fprintf('Too few intersecting points found, skipping.\n');
             nSkipped = nSkipped + 1;
             continue;
+        else % Interpolate missing contour points
+            polarContour(1,:) = interp1(angInd(~isnan(polarContour(1,:))), ...
+                polarContour(1,~isnan(polarContour(1,:))), angInd);
         end
-        angInd = 1:nAngPoints;
-        polarContour(1,:) = interp1(angInd(~isnan(polarContour(1,:))), ...
-            polarContour(1,~isnan(polarContour(1,:))), angInd);
-    end
-    if size(missingEpiPoints,2) > 0
-        if size(missingEpiPoints,2) > 10
+        
+        if sum(isnan(polarContour(:,2))) > 10
             fprintf('Too few intersecting points found, skipping.\n');
             nSkipped = nSkipped + 1;
             continue;
+        else
+            polarContour(2,:) = interp1(angInd(~isnan(polarContour(2,:))), ...
+                polarContour(2,~isnan(polarContour(2,:))), angInd);
         end
-        angInd = 1:nAngPoints;
-        polarContour(2,:) = interp1(angInd(~isnan(polarContour(2,:))), ...
-            polarContour(2,~isnan(polarContour(2,:))), angInd);
     end
     
-    % Generate polar LV Mask using the polar contour.
-    maskX = [polarContour(1,:) flip(polarContour(2,:))];
-    maskY = [linspace(1, nAngPoints, nAngPoints) linspace(nAngPoints, 1, nAngPoints)];
-    polarLVMask = poly2mask(maskY, maskX, nRadPoints, nAngPoints);
-    
+    if any(~isnan(polarContour))
+        % Generate polar LV Mask using the polar contour.
+        maskX = [polarContour(1,:) flip(polarContour(2,:))];
+        maskY = [linspace(1, nAngPoints, nAngPoints) linspace(nAngPoints, 1, nAngPoints)];
+        polarLVMask = poly2mask(maskY, maskX, nRadPoints, nAngPoints);
+    else
+        continue;
+    end
     % Save the images.
     imwrite(polarIm, fullfile(savePath, 'images', ...
         [imSet.DataSetName '_' imSet.FileName '_' num2str(iImage) '.png']), 'png');
