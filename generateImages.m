@@ -118,11 +118,7 @@ nSkipped = 0;
 
 % Resample image set.
 % imSet = resampleImages(imSet, resolution);
-
-% Initiate polar representations.
 nImages = size(imSet.IM,3);
-polarIm = NaN(nRadPoints, nAngPoints);
-polarContour = NaN(2, nAngPoints);
 
 % Create the save folder.
 if exist(savePath, 'dir') ~= 7
@@ -131,6 +127,8 @@ if exist(savePath, 'dir') ~= 7
 end
 
 for iImage = 1:nImages
+    polarIm = NaN(nRadPoints, nAngPoints);
+    polarContour = NaN(2, nAngPoints);
     missingEpiPoints = [];           % Failed intersection check.
     missingEndoPoints = [];
     
@@ -139,7 +137,7 @@ for iImage = 1:nImages
             size(imSet.IM, 1) - imSet.Center(1,iImage), ...
             imSet.Center(2,iImage), ...
             size(imSet.IM, 2) - imSet.Center(2,iImage)])
-        fprintf('Trying to crop the image outside its boundaries, skipping...\n');
+        fprintf('Trying to crop the image outside its boundaries, skipping.\n');
         nSkipped = nSkipped + 1;        
         continue;
     end
@@ -162,7 +160,7 @@ for iImage = 1:nImages
             imSet.Endo(:,1,iImage), imSet.Endo(:,2,iImage));
         
         % Check if the instersection was found.
-        if isempty(endoX) || isempty(endoY)
+        if length(endoX) ~= 1 || length(endoY) ~= 1
             polarContour(1, iInsert) = NaN;
             missingEndoPoints = [missingEndoPoints iInsert];
         else
@@ -174,7 +172,7 @@ for iImage = 1:nImages
         % ------ Epicardial ------
         [epiX, epiY] = intersections(rLineX, rLineY, ...
             imSet.Epi(:,1,iImage), imSet.Epi(:,2,iImage));
-        if isempty(epiX) || isempty(epiY)
+        if length(epiX) ~= 1 || length(epiY) ~= 1
             polarContour(2, iInsert) = NaN;
             missingEpiPoints = [missingEpiPoints iInsert];
         else
@@ -187,7 +185,7 @@ for iImage = 1:nImages
     % Interpolate missing contour points.
     if size(missingEndoPoints,2) > 0
         if size(missingEndoPoints,2) > 10
-            fprintf('Too few intersecting points, skipping. \n');
+            fprintf('Too few intersecting points found, skipping.\n');
             nSkipped = nSkipped + 1;
             continue;
         end
@@ -197,7 +195,7 @@ for iImage = 1:nImages
     end
     if size(missingEpiPoints,2) > 0
         if size(missingEpiPoints,2) > 10
-            disp('Too few intersecting points, skipping. \n');
+            fprintf('Too few intersecting points found, skipping.\n');
             nSkipped = nSkipped + 1;
             continue;
         end
@@ -224,7 +222,11 @@ for iImage = 1:nImages
             imSet.FileName '_' num2str(iImage)]);
     end
 end
-fprintf('Skipped %i images in imageset %s. \n', nSkipped, imSet.DataSetName);
+
+if nSkipped > 0
+    fprintf('\n Skipped %i images in imageset %s %s. \n', nSkipped, ...
+        imSet.DataSetName, imSet.FileName);
+end
 end
 
 %-----------------------------------
