@@ -88,7 +88,7 @@ if height < cropSize
     padHeight = cropSize - height;
 end
 if width < cropSize
-   padWidth = cropSize - width;
+    padWidth = cropSize - width;
 end
 im = padarray(im, [padHeight padWidth]);
 
@@ -137,109 +137,109 @@ end
 
 for iImage = 1:nImages
     try
-    polarIm = NaN(nRadPoints, nAngPoints);
-    polarContour = NaN(2, nAngPoints);
-    
-    % Check that we aren't cropping outside the image.
-    if radius > min([imSet.Center(1,iImage), ...
-            size(imSet.IM, 1) - imSet.Center(1,iImage), ...
-            imSet.Center(2,iImage), ...
-            size(imSet.IM, 2) - imSet.Center(2,iImage)])
-        fprintf('Trying to crop the image outside its boundaries, skipping.\n');
-        nSkipped = nSkipped + 1;
-        continue;
-    end
-    
-    iInsert = 1;    % Radial counter.
-    
-    % Sample the image in polar coordinates.
-    for iTheta = 0:2*pi/nAngPoints : 2*pi - 2*pi/nAngPoints
-        rLineX = [imSet.Center(1,iImage), imSet.Center(1,iImage) + radius*sin(iTheta)];
-        rLineY = [imSet.Center(2,iImage), imSet.Center(2,iImage) + radius*cos(iTheta)];
+        polarIm = NaN(nRadPoints, nAngPoints);
+        polarContour = NaN(2, nAngPoints);
         
-        % Interpolate in radial direction from the centerpoint to rLimit.
-        polarIm(:,iInsert) = improfile(imSet.IM(:,:,iImage), rLineY, rLineX, ...
-            nRadPoints, interpolationMethod)';
-        
-        % ------ Endocardial ------
-        % Find the position where a line from the center intersectswith the
-        % endocardium.
-        [endoX, endoY] = intersections(rLineX, rLineY, ...
-            imSet.Endo(:,1,iImage), imSet.Endo(:,2,iImage));
-        
-        % Check if the instersection was found.
-        if length(endoX) == 1 || length(endoY) == 1
-            % Calculate the radial distance.
-            polarContour(1, iInsert) = sqrt((endoX - imSet.Center(1,iImage))^2 + ...
-                (endoY - imSet.Center(2,iImage))^2)/(radius/nRadPoints);
-        end
-        
-        % ------ Epicardial ------
-        [epiX, epiY] = intersections(rLineX, rLineY, ...
-            imSet.Epi(:,1,iImage), imSet.Epi(:,2,iImage));
-        if length(epiX) == 1 || length(epiY) == 1
-            polarContour(2, iInsert) = sqrt((epiX - imSet.Center(1,iImage))^2 + ...
-                (epiY - imSet.Center(2,iImage))^2)/(radius/nRadPoints);
-        end
-        iInsert = iInsert + 1;
-    end
-    
-    % Check missing contour points.
-    if any(isnan(polarContour))
-        angInd = 1:nAngPoints;
-        % Skip image if more than 10% of the total contour points are missing.
-        if sum(isnan(polarContour(:,1))) > 10
-            fprintf('Too few intersecting points found, skipping.\n');
+        % Check that we aren't cropping outside the image.
+        if radius > min([imSet.Center(1,iImage), ...
+                size(imSet.IM, 1) - imSet.Center(1,iImage), ...
+                imSet.Center(2,iImage), ...
+                size(imSet.IM, 2) - imSet.Center(2,iImage)])
+            fprintf('Trying to crop the image outside its boundaries, skipping.\n');
             nSkipped = nSkipped + 1;
             continue;
-        else % Interpolate missing contour points
-            polarContour(1,:) = interp1(angInd(~isnan(polarContour(1,:))), ...
-                polarContour(1,~isnan(polarContour(1,:))), ...
-                angInd, 'linear', 'extrap');
         end
         
-        if sum(isnan(polarContour(:,2))) > 10
-            fprintf('Too few intersecting points found, skipping.\n');
-            nSkipped = nSkipped + 1;
+        iInsert = 1;    % Radial counter.
+        
+        % Sample the image in polar coordinates.
+        for iTheta = 0:2*pi/nAngPoints : 2*pi - 2*pi/nAngPoints
+            rLineX = [imSet.Center(1,iImage), imSet.Center(1,iImage) + radius*sin(iTheta)];
+            rLineY = [imSet.Center(2,iImage), imSet.Center(2,iImage) + radius*cos(iTheta)];
+            
+            % Interpolate in radial direction from the centerpoint to rLimit.
+            polarIm(:,iInsert) = improfile(imSet.IM(:,:,iImage), rLineY, rLineX, ...
+                nRadPoints, interpolationMethod)';
+            
+            % ------ Endocardial ------
+            % Find the position where a line from the center intersectswith the
+            % endocardium.
+            [endoX, endoY] = intersections(rLineX, rLineY, ...
+                imSet.Endo(:,1,iImage), imSet.Endo(:,2,iImage));
+            
+            % Check if the instersection was found.
+            if length(endoX) == 1 || length(endoY) == 1
+                % Calculate the radial distance.
+                polarContour(1, iInsert) = sqrt((endoX - imSet.Center(1,iImage))^2 + ...
+                    (endoY - imSet.Center(2,iImage))^2)/(radius/nRadPoints);
+            end
+            
+            % ------ Epicardial ------
+            [epiX, epiY] = intersections(rLineX, rLineY, ...
+                imSet.Epi(:,1,iImage), imSet.Epi(:,2,iImage));
+            if length(epiX) == 1 || length(epiY) == 1
+                polarContour(2, iInsert) = sqrt((epiX - imSet.Center(1,iImage))^2 + ...
+                    (epiY - imSet.Center(2,iImage))^2)/(radius/nRadPoints);
+            end
+            iInsert = iInsert + 1;
+        end
+        
+        % Check missing contour points.
+        if any(isnan(polarContour))
+            angInd = 1:nAngPoints;
+            % Skip image if more than 10% of the total contour points are missing.
+            if sum(isnan(polarContour(:,1))) > 10
+                fprintf('Too few intersecting points found, skipping.\n');
+                nSkipped = nSkipped + 1;
+                continue;
+            else % Interpolate missing contour points
+                polarContour(1,:) = interp1(angInd(~isnan(polarContour(1,:))), ...
+                    polarContour(1,~isnan(polarContour(1,:))), ...
+                    angInd, 'linear', 'extrap');
+            end
+            
+            if sum(isnan(polarContour(:,2))) > 10
+                fprintf('Too few intersecting points found, skipping.\n');
+                nSkipped = nSkipped + 1;
+                continue;
+            else
+                polarContour(2,:) = interp1(angInd(~isnan(polarContour(2,:))), ...
+                    polarContour(2,~isnan(polarContour(2,:))), ...
+                    angInd, 'linear', 'extrap');
+            end
+        end
+        
+        if any(any(isnan(polarContour))) || any(any(isinf(polarContour)))
+            fprintf('Can not create a contour, skipping. \n')
             continue;
         else
-            polarContour(2,:) = interp1(angInd(~isnan(polarContour(2,:))), ...
-                polarContour(2,~isnan(polarContour(2,:))), ...
-                angInd, 'linear', 'extrap');
+            % Generate polar LV Mask using the polar contour.
+            maskX = [polarContour(1,:) flip(polarContour(2,:))];
+            maskY = [linspace(1, nAngPoints, nAngPoints) linspace(nAngPoints, 1, nAngPoints)];
+            polarLVMask = poly2mask(maskY, maskX, nRadPoints, nAngPoints);
         end
+        % Save the images.
+        imwrite(polarIm, fullfile(savePath, 'images', ...
+            [imSet.DataSetName '_' imSet.FileName '_' num2str(iImage) '.png']), 'png');
+        imwrite(polarLVMask, fullfile(savePath, 'labels', ...
+            [imSet.DataSetName '_' imSet.FileName '_' num2str(iImage) '.png']), 'png');
+        
+        if (~silent)
+            drawPolarLV(polarIm, ...
+                polarContour(1,:), polarContour(2,:), ...
+                ['Polar Image for dataset ' imSet.DataSetName ', file ' ...
+                imSet.FileName '_' num2str(iImage)]);
+        end
+    catch
+        fprintf(['Error found, skipped image in dataset ' imSet.DataSetName ...
+            ', file ' imSet.FileName '_' num2str(iImage)]);
     end
     
-    if any(any(isnan(polarContour))) || any(any(isinf(polarContour)))
-        fprintf('Can not create a contour, skipping. \n')
-        continue;
-    else
-        % Generate polar LV Mask using the polar contour.
-        maskX = [polarContour(1,:) flip(polarContour(2,:))];
-        maskY = [linspace(1, nAngPoints, nAngPoints) linspace(nAngPoints, 1, nAngPoints)];
-        polarLVMask = poly2mask(maskY, maskX, nRadPoints, nAngPoints);
+    if nSkipped > 0
+        fprintf('\n Skipped %i images in imageset %s %s. \n', nSkipped, ...
+            imSet.DataSetName, imSet.FileName);
     end
-    % Save the images.
-    imwrite(polarIm, fullfile(savePath, 'images', ...
-        [imSet.DataSetName '_' imSet.FileName '_' num2str(iImage) '.png']), 'png');
-    imwrite(polarLVMask, fullfile(savePath, 'labels', ...
-        [imSet.DataSetName '_' imSet.FileName '_' num2str(iImage) '.png']), 'png');
     
-    if (~silent)
-        drawPolarLV(polarIm, ...
-            polarContour(1,:), polarContour(2,:), ...
-            ['Polar Image for dataset ' imSet.DataSetName ', file ' ...
-            imSet.FileName '_' num2str(iImage)]);
-    end
-catch
-    fprintf(['Error found, skipped image in dataset ' imSet.DataSetName ...
-        ', file ' imSet.FileName '_' num2str(iImage)]);
-end
-
-if nSkipped > 0
-    fprintf('\n Skipped %i images in imageset %s %s. \n', nSkipped, ...
-        imSet.DataSetName, imSet.FileName);
-end
-
 end
 end
 
