@@ -77,23 +77,32 @@ end
 function im = cropImage(im, center)
 %-----------------------------------
 % Wanted size: 96x96
-imSize = 96;  % Desired size;
-xSize = size(im,1);
-ySize = size(im,2);
+cropSize = 96;  % Desired size;
+height = size(im,1);
+width = size(im,2);
+padHeight = 0;
+padWidth = 0;
 
-if xSize > imSize
-    xDiff = xSize - imSize;
+% Zero pad image if needed.
+if height < cropSize
+    padHeight = cropSize - height;
+end
+if width < cropSize
+   padWidth = cropSize - width;
+end
+im = padarray(im, [padHeight padWidth]);
+
+% If the pad was not done, crop instead.
+if padHeight == 0
+    cropStart = 0;
+    cropEnd = 0;
+    im = im(cropStart:cropEnd,:);
+end
+
+if padWidth == 0
     
-    im = im(indX, indY);
-    if ySize > imSize
-        
-        yDiff = ySize - imSize;
-        
-    else
-        
-    end
-else
     
+    im = im(:,cropStart:cropEnd);
 end
 
 end
@@ -127,6 +136,7 @@ if exist(savePath, 'dir') ~= 7
 end
 
 for iImage = 1:nImages
+    try
     polarIm = NaN(nRadPoints, nAngPoints);
     polarContour = NaN(2, nAngPoints);
     
@@ -220,11 +230,16 @@ for iImage = 1:nImages
             ['Polar Image for dataset ' imSet.DataSetName ', file ' ...
             imSet.FileName '_' num2str(iImage)]);
     end
+catch
+    fprintf(['Error found, skipped image in dataset ' imSet.DataSetName ...
+        ', file ' imSet.FileName '_' num2str(iImage)]);
 end
 
 if nSkipped > 0
     fprintf('\n Skipped %i images in imageset %s %s. \n', nSkipped, ...
         imSet.DataSetName, imSet.FileName);
+end
+
 end
 end
 
