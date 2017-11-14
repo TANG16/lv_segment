@@ -136,7 +136,7 @@ for iImage = 1:nImages
             imSet.Center(2,iImage), ...
             size(imSet.IM, 2) - imSet.Center(2,iImage)])
         fprintf('Trying to crop the image outside its boundaries, skipping.\n');
-        nSkipped = nSkipped + 1;        
+        nSkipped = nSkipped + 1;
         continue;
     end
     
@@ -184,7 +184,8 @@ for iImage = 1:nImages
             continue;
         else % Interpolate missing contour points
             polarContour(1,:) = interp1(angInd(~isnan(polarContour(1,:))), ...
-                polarContour(1,~isnan(polarContour(1,:))), angInd);
+                polarContour(1,~isnan(polarContour(1,:))), ...
+                angInd, 'linear', 'extrap');
         end
         
         if sum(isnan(polarContour(:,2))) > 10
@@ -193,17 +194,19 @@ for iImage = 1:nImages
             continue;
         else
             polarContour(2,:) = interp1(angInd(~isnan(polarContour(2,:))), ...
-                polarContour(2,~isnan(polarContour(2,:))), angInd);
+                polarContour(2,~isnan(polarContour(2,:))), ...
+                angInd, 'linear', 'extrap');
         end
     end
     
-    if any(~isnan(polarContour))
+    if any(any(isnan(polarContour))) || any(any(isinf(polarContour)))
+        fprintf('Can not create a contour, skipping. \n')
+        continue;
+    else
         % Generate polar LV Mask using the polar contour.
         maskX = [polarContour(1,:) flip(polarContour(2,:))];
         maskY = [linspace(1, nAngPoints, nAngPoints) linspace(nAngPoints, 1, nAngPoints)];
         polarLVMask = poly2mask(maskY, maskX, nRadPoints, nAngPoints);
-    else
-        continue;
     end
     % Save the images.
     imwrite(polarIm, fullfile(savePath, 'images', ...
