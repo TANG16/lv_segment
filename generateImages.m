@@ -107,7 +107,6 @@ end
 
 end
 
-
 %-----------------------------------
 function savePolarImages(imSet, resolution, savePath, silent)
 %-----------------------------------
@@ -234,13 +233,13 @@ for iImage = 1:nImages
         fprintf(['Error found, skipped image in dataset ' imSet.DataSetName ...
             ', file ' imSet.FileName '_' num2str(iImage)]);
     end
-    
-    if nSkipped > 0
-        fprintf('\n Skipped %i images in imageset %s %s. \n', nSkipped, ...
-            imSet.DataSetName, imSet.FileName);
-    end
-    
 end
+
+if nSkipped > 0
+    fprintf('\n Skipped %i images in imageset %s %s. \n', nSkipped, ...
+        imSet.DataSetName, imSet.FileName);
+end
+
 end
 
 %-----------------------------------
