@@ -134,6 +134,7 @@ if exist(savePath, 'dir') ~= 7
     mkdir(fullfile(savePath, 'labels'));
 end
 
+fprintf('Generating images from %s \n', imSet.DataSetName);
 for iImage = 1:nImages
     try
         polarIm = NaN(nRadPoints, nAngPoints);
@@ -215,6 +216,7 @@ for iImage = 1:nImages
         
         if any(any(isnan(polarContour))) || any(any(isinf(polarContour)))
             fprintf('Can not create a contour, skipping. \n')
+            nSkipped = nSkipped + 1;
             continue;
         else
             % Generate polar LV Mask using the polar contour.
