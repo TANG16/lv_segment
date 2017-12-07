@@ -120,7 +120,7 @@ end
 % ventricle segmentation in cardiac cine MR sequences" Tan et al, 2017.
 nAngPoints = 96;
 nRadPoints = 56;
-radius = 27; % Cropping radius from centerpoint.
+radius = 28; % Cropping radius from centerpoint.
 interpolationMethod = 'bilinear';
 nSkipped = 0;
 
@@ -184,24 +184,29 @@ for iImage = 1:nImages
         end
         
         % Check missing contour points.
-        if any(isnan(polarContour))
+        if any(any(isnan(polarContour)))
             angInd = 1:nAngPoints;
             % Skip image if more than 10% of the total contour points are missing.
-            if sum(isnan(polarContour(:,1))) > 10
+            if sum(isnan(polarContour(1,:))) > 30 || sum(isnan(polarContour(2,:))) > 30
                 fprintf('Too few intersecting points found, skipping.\n');
                 nSkipped = nSkipped + 1;
+%                 figure;
+%                 imshow(imSet.IM(:,:,iImage))
+%                 hold on
+%                 plot(imSet.Endo(:,2,iImage), ...
+%                     imSet.Endo(:,1,iImage), 'r-');
+%                 plot(imSet.Epi(:,2,iImage), ...
+%                     imSet.Epi(:,1,iImage), 'g-');
+%                 plot(imSet.Center(2,iImage), imSet.Center(1,iImage), ...
+%                     'Marker', '*', 'Color', [0 0 1], 'MarkerSize', 10);
+%                 polarContour
+%                 drawnow;
+%                 pause;
                 continue;
             else % Interpolate missing contour points
                 polarContour(1,:) = interp1(angInd(~isnan(polarContour(1,:))), ...
                     polarContour(1,~isnan(polarContour(1,:))), ...
                     angInd, 'linear', 'extrap');
-            end
-            
-            if sum(isnan(polarContour(:,2))) > 10
-                fprintf('Too few intersecting points found, skipping.\n');
-                nSkipped = nSkipped + 1;
-                continue;
-            else
                 polarContour(2,:) = interp1(angInd(~isnan(polarContour(2,:))), ...
                     polarContour(2,~isnan(polarContour(2,:))), ...
                     angInd, 'linear', 'extrap');
@@ -213,9 +218,10 @@ for iImage = 1:nImages
             continue;
         else
             % Generate polar LV Mask using the polar contour.
-            maskX = [polarContour(1,:) flip(polarContour(2,:))];
-            maskY = [linspace(1, nAngPoints, nAngPoints) linspace(nAngPoints, 1, nAngPoints)];
-            polarLVMask = poly2mask(maskY, maskX, nRadPoints, nAngPoints);
+            % Add extra points to create a mask to the edges.
+            maskX = [polarContour(1,:) flip(polarContour(2,:)) polarContour(1,1)];
+            maskY = [linspace(1, nAngPoints, nAngPoints) linspace(nAngPoints, 1, nAngPoints) 1];
+            polarLVMask = im2uint8(createmask([nRadPoints nAngPoints], maskY, maskX));
         end
         % Save the images.
         imwrite(polarIm, fullfile(savePath, 'images', ...
@@ -229,7 +235,9 @@ for iImage = 1:nImages
                 ['Polar Image for dataset ' imSet.DataSetName ', file ' ...
                 imSet.FileName '_' num2str(iImage)]);
         end
-    catch
+    catch e
+        fprintf(2,'The identifier was:\n%s',e.identifier);
+        fprintf(2,'There was an error! The message was:\n%s',e.message);
         fprintf(['Error found, skipped image in dataset ' imSet.DataSetName ...
             ', file ' imSet.FileName '_' num2str(iImage)]);
     end
@@ -249,10 +257,27 @@ function saveImage(im, path)
 imwrite(im, fullfile(path, [path '.png']), 'png');
 end
 
-%-----------------------------------
-function generateMask(im, contourX, contourY)
-%-----------------------------------
-%Not sure if necessary.
+%---------------------------------------
+function mask = createmask(outsize,y,x)
+%---------------------------------------
+%Function to generate a mask from a polygon represented with the vectors x
+%and y.
+
+%Check if NaN then return empty
+if any(isnan(x)) || any(isnan(y))
+    mask = false(outsize);
+    return;
+end
+
+mask = false(outsize);
+mx = round(mean([x(2) x(end-2)]));
+my = round(mean([x(95) x(98)]));
+x = interp1(x,linspace(1,length(x),1000));
+y = interp1(y,linspace(1,length(y),1000));
+mask(sub2ind(outsize,round(x),round(y))) = true;
+mask = imfill(mask,[mx 2],4);
+mask = imfill(mask,[my 95],4);
+mask = imfill(mask, 4, 'holes');
 end
 
 %-----------------------------------
@@ -296,7 +321,7 @@ if f>0
     d = (ceil(f)-1)/2;
 else
     d = 0;
-end;
+end
 
 if isa(x,'double')
     x = x*f-d;
@@ -304,9 +329,9 @@ else
     for xloop=1:size(x,1)
         for yloop=1:size(x,2)
             x{xloop,yloop} = x{xloop,yloop}*f-d;
-        end;
-    end;
-end;
+        end
+    end
+end
 end
 
 %--------------------------------------
@@ -332,7 +357,7 @@ elseif isa(vol,'int16')
         size(vol,4)]);
 else
     newvol = zeros(newsize(1),newsize(2),size(vol,3),size(vol,4));
-end;
+end
 
 %Loop over image volume
 for tloop=1:size(vol,3)
@@ -343,7 +368,7 @@ for tloop=1:size(vol,3)
             newvol(:,:,tloop,zloop) = int16(imresize(vol(:,:,tloop,zloop),f,'bicubic'));
         else
             newvol(:,:,tloop,zloop) = imresize(vol(:,:,tloop,zloop),f,'bicubic');
-        end;
-    end;
-end;
+        end
+    end
+end
 end
