@@ -104,7 +104,6 @@ segment('filecloseall_Callback',true);
 
 %Stop the silent mode.
 DATA.Silent = false;
-end
 
 
 %---------------------------------

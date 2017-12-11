@@ -1,7 +1,9 @@
-dataDir = 'C:\Users\Mattis\Documents\MATLAB\exjobb\data\Trainset\systolic\polar';
+% dataDir = 'C:\Users\Mattis\Documents\MATLAB\exjobb\data\Trainset\systolic\polar';
 % dataDir = 'C:\Users\Mattis\Documents\MATLAB\exjobb\data\Trainset\diastolic\polar';
 % dataDir = 'C:\Users\Mattis\Documents\MATLAB\exjobb\data\Trainset\merged\polar';
+dataDir = '\\147.220.31.56\guests\MattisNilsson\data\data_sets_images\export\systolic\polar\midventricular\';
 
+% diary('systolic_midvent_training.txt');
 imDir = fullfile(dataDir, 'images');
 labelDir = fullfile(dataDir,'labels');
 
@@ -36,6 +38,7 @@ numTestingImages = numel(imdsTest.Files)
 
 % Create the network.
 lgraph = segnetLayers(imSize, numClasses , 5);
+% importCaffeNetwork
 figure
 plot(lgraph)
 
@@ -60,49 +63,37 @@ options = trainingOptions('sgdm', ...
     'Momentum', 0.9, ...
     'InitialLearnRate', 1e-3, ...
     'L2Regularization', 0.0005, ...
-    'MaxEpochs', 100, ...  
+    'MaxEpochs', 40, ...
     'MiniBatchSize', 4, ...
     'Shuffle', 'every-epoch', ...
-    'VerboseFrequency', 2);
+    'VerboseFrequency', 10);
+
+options = trainingOptions('sgdm', ...
+    'Momentum', 0.9, ...
+    'InitialLearnRate', 1e-3, ...
+    'L2Regularization', 0.0005, ...
+    'LearnRateSchedule','piecewise',...
+    'LearnRateDropFactor',0.2,...
+    'LearnRateDropPeriod',5,...
+    'MaxEpochs', 50, ...
+    'MiniBatchSize', 256, ...
+    'Shuffle', 'every-epoch', ...
+    'VerboseFrequency', 1, ...
+    'ValidationData', imdsValid, ...
+    'ValidationFrequency', 10, ...
+    'Plots', 'training-progress');
+
 
 % Data augmentation
-augmenter = imageDataAugmenter('RandXReflection',true,...
-    'RandXTranslation', [-10 10], 'RandYTranslation',[-10 10]);
-datasource = pixelLabelImageSource(imdsTrain,pxdsTrain, ...
-   'DataAugmentation',augmenter);
+% augmenter = imageDataAugmenter('RandXReflection',true,...
+%     'RandXTranslation', [-10 10], 'RandYTranslation',[-10 10]);
+datasource = pixelLabelImageSource(imdsTrain,pxdsTrain); %, ...
+%    'DataAugmentation',augmenter);
 
 [net, info] = trainNetwork(datasource, lgraph, options);
 
 %%
-I = read(imdsTest);
-C = semanticseg(I, net);
-
-for iImage = 1:numTestingImages
-    I = readimage(imdsTest, iImage);
-    C = semanticseg(I, net);
-    B = labeloverlay(I, C,'Transparency',0.4);
-    figure(1)
-    imshow(B)
-    pause(0.5)
-end
-% pixelLabelColorbar(cmap, classes);
-%%
-figure;
-expectedResult = read(pxdsTest);
-actual = uint8(C);
-expected = uint8(expectedResult);
-imshowpair(actual, expected)
-
-iou = jaccard(C, expectedResult);
-table(classNames,iou)
-
-pxdsResults = semanticseg(imdsTest,net,'WriteLocation',tempdir,'Verbose',false);
-metrics = evaluateSemanticSegmentation(pxdsResults,pxdsTest,'Verbose',false);
-metrics.DataSetMetrics
-metrics.ClassMetrics
-
-%%
-function [imdsTrain, imdsTest, pxdsTrain, pxdsTest] = partitionData(imds,pxds)
+function [imdsTrain, imdsTest, pxdsTrain, pxdsTest, imdsValid, pxdsValid] = partitionData(imds,pxds)
 % Partition CamVid data by randomly selecting 60% of the data for training. The
 % rest is used for testing.
     
@@ -111,18 +102,23 @@ rng(0);
 numFiles = numel(imds.Files);
 shuffledIndices = randperm(numFiles);
 
-% Use 60% of the images for training.
-N = round(0.60 * numFiles);
-trainingIdx = shuffledIndices(1:N);
+% Use 80% of the images for training.
+nTest = round(0.60 * numFiles);
+nVal = round(0.80 * numFiles);
+
+trainingIdx = shuffledIndices(1:nTest);
 
 % Use the rest for testing.
-testIdx = shuffledIndices(N+1:end);
+testIdx = shuffledIndices(nTest+1:nVal);
+valIdx = shuffledIndices(nVal:end);
 
 % Create image datastores for training and test.
 trainingImages = imds.Files(trainingIdx);
 testImages = imds.Files(testIdx);
+validImages = imds.Files(valIdx);
 imdsTrain = imageDatastore(trainingImages);
 imdsTest = imageDatastore(testImages);
+imdsValid = imageDatastore(validImages);
 
 % Extract class and label IDs info.
 classes = pxds.ClassNames;
@@ -131,6 +127,9 @@ labelIDs = [255 0];
 % Create pixel label datastores for training and test.
 trainingLabels = pxds.Files(trainingIdx);
 testLabels = pxds.Files(testIdx);
+validLabels = pxds.Files(valIdx);
+
 pxdsTrain = pixelLabelDatastore(trainingLabels, classes, labelIDs);
 pxdsTest = pixelLabelDatastore(testLabels, classes, labelIDs);
+pxdsValid = pixelLabelDatastore(validLabels, classis, labelIDs);
 end
