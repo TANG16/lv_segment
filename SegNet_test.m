@@ -1,7 +1,12 @@
 % dataDir = 'C:\Users\Mattis\Documents\MATLAB\exjobb\data\Trainset\systolic\polar';
 % dataDir = 'C:\Users\Mattis\Documents\MATLAB\exjobb\data\Trainset\diastolic\polar';
 % dataDir = 'C:\Users\Mattis\Documents\MATLAB\exjobb\data\Trainset\merged\polar';
-dataDir = '\\147.220.31.56\guests\MattisNilsson\data\data_sets_images\export\systolic\polar\midventricular\';
+
+% Network directories.
+% dataDir = '\\147.220.31.56\guests\MattisNilsson\data\data_sets_images\export\systolic\polar\midventricular\';
+dataDir = '\\147.220.31.56\guests\MattisNilsson\data\images\diastolic\polar\midventricular\';
+
+[saveFile savePath] = uigetfile('*.mat', 'Choose a file to save the network info to');
 
 % diary('systolic_midvent_training.txt');
 imDir = fullfile(dataDir, 'images');
@@ -32,6 +37,8 @@ xtickangle(45)
 ylabel('Frequency')
 
 % Partition data.
+% [imdsTrain, imdsTest, pxdsTrain, pxdsTest, imdsValid, pxdsValid] = partitionData(imds,pxds);
+
 [imdsTrain, imdsTest, pxdsTrain, pxdsTest] = partitionData(imds,pxds);
 numTrainingImages = numel(imdsTrain.Files)
 numTestingImages = numel(imdsTest.Files)
@@ -59,14 +66,16 @@ lgraph = addLayers(lgraph, pxLayer);
 lgraph = connectLayers(lgraph, 'softmax' ,'labels');
 
 % Training options
-options = trainingOptions('sgdm', ...
-    'Momentum', 0.9, ...
-    'InitialLearnRate', 1e-3, ...
-    'L2Regularization', 0.0005, ...
-    'MaxEpochs', 40, ...
-    'MiniBatchSize', 4, ...
-    'Shuffle', 'every-epoch', ...
-    'VerboseFrequency', 10);
+% options = trainingOptions('sgdm', ...
+%     'Momentum', 0.9, ...
+%     'InitialLearnRate', 1e-3, ...
+%     'L2Regularization', 0.0005, ...
+%     'MaxEpochs', 40, ...
+%     'MiniBatchSize', 4, ...
+%     'Shuffle', 'every-epoch', ...
+%     'VerboseFrequency', 10);
+
+testSource = pixelLabelImageSource(imdsTest,pxdsTest);
 
 options = trainingOptions('sgdm', ...
     'Momentum', 0.9, ...
@@ -75,25 +84,28 @@ options = trainingOptions('sgdm', ...
     'LearnRateSchedule','piecewise',...
     'LearnRateDropFactor',0.2,...
     'LearnRateDropPeriod',5,...
-    'MaxEpochs', 50, ...
-    'MiniBatchSize', 256, ...
+    'MaxEpochs', 200, ...
+    'MiniBatchSize', 128, ...
     'Shuffle', 'every-epoch', ...
     'VerboseFrequency', 1, ...
-    'ValidationData', imdsValid, ...
-    'ValidationFrequency', 10, ...
     'Plots', 'training-progress');
 
-
+%         'ValidationData', testSource, ...
+%     'ValidationFrequency', 100, ...
 % Data augmentation
-% augmenter = imageDataAugmenter('RandXReflection',true,...
-%     'RandXTranslation', [-10 10], 'RandYTranslation',[-10 10]);
-datasource = pixelLabelImageSource(imdsTrain,pxdsTrain); %, ...
-%    'DataAugmentation',augmenter);
+augmenter = imageDataAugmenter('RandXTranslation', [-10 10], ...
+    'RandYTranslation',[-10 10]);
+datasource = pixelLabelImageSource(imdsTrain,pxdsTrain, ...
+   'DataAugmentation',augmenter);
 
 [net, info] = trainNetwork(datasource, lgraph, options);
+save(fullfile(savePath, saveFile), 'net' ,'imdsTest', 'imdsTrain', 'pxdsTrain', 'pxdsTest');
 
-%%
-function [imdsTrain, imdsTest, pxdsTrain, pxdsTest, imdsValid, pxdsValid] = partitionData(imds,pxds)
+
+
+% function [imdsTrain, imdsTest, pxdsTrain, pxdsTest, imdsValid, pxdsValid] ... 
+function [imdsTrain, imdsTest, pxdsTrain, pxdsTest] ... 
+    = partitionData(imds, pxds)
 % Partition CamVid data by randomly selecting 60% of the data for training. The
 % rest is used for testing.
     
@@ -103,22 +115,22 @@ numFiles = numel(imds.Files);
 shuffledIndices = randperm(numFiles);
 
 % Use 80% of the images for training.
-nTest = round(0.60 * numFiles);
-nVal = round(0.80 * numFiles);
+nTest = round(0.80 * numFiles);
+% nVal = round(0.80 * numFiles);
 
 trainingIdx = shuffledIndices(1:nTest);
 
 % Use the rest for testing.
-testIdx = shuffledIndices(nTest+1:nVal);
-valIdx = shuffledIndices(nVal:end);
+testIdx = shuffledIndices(nTest+1:end);
+% valIdx = shuffledIndices(nVal:end);
 
 % Create image datastores for training and test.
 trainingImages = imds.Files(trainingIdx);
 testImages = imds.Files(testIdx);
-validImages = imds.Files(valIdx);
+% validImages = imds.Files(valIdx);
 imdsTrain = imageDatastore(trainingImages);
 imdsTest = imageDatastore(testImages);
-imdsValid = imageDatastore(validImages);
+% imdsValid = imageDatastore(validImages);
 
 % Extract class and label IDs info.
 classes = pxds.ClassNames;
@@ -127,9 +139,9 @@ labelIDs = [255 0];
 % Create pixel label datastores for training and test.
 trainingLabels = pxds.Files(trainingIdx);
 testLabels = pxds.Files(testIdx);
-validLabels = pxds.Files(valIdx);
+% validLabels = pxds.Files(valIdx);
 
 pxdsTrain = pixelLabelDatastore(trainingLabels, classes, labelIDs);
 pxdsTest = pixelLabelDatastore(testLabels, classes, labelIDs);
-pxdsValid = pixelLabelDatastore(validLabels, classis, labelIDs);
+% pxdsValid = pixelLabelDatastore(validLabels, classes, labelIDs);
 end
