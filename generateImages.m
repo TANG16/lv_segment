@@ -22,29 +22,141 @@ filesInDir = dir([loadPath filesep '*.mat']);
 fileNames = extractfield(filesInDir, 'name');
 nFiles = length(fileNames);
 
-diary([savePath 'exportlog.txt']);
-
 h = waitbar(0,'Processing images, please wait...');
-for iFile = 1:nFiles
+parfor iFile = 1:nFiles
     % Load data set.
     data = load([loadPath filesep fileNames{iFile}],'-mat');
     
-%     Save normal images.
+    % Save normal images.
     arrayfun(@(x) saveImages(x, resolution, ...
         fullfile(savePath, '/systolic', 'normal')), data.systolic);
     arrayfun(@(x) saveImages(x, resolution, ...
         fullfile(savePath, '/diastolic', 'normal')), data.diastolic);
     
     % Generate and save polar images.
-%     arrayfun(@(x) savePolarImages(x, resolution, ...
-%         fullfile(savePath, '/systolic', 'polar')), data.systolic);
-%     arrayfun(@(x) savePolarImages(x, resolution, ...
-%         fullfile(savePath, '/diastolic', 'polar')), data.diastolic);
-%     
+    %     arrayfun(@(x) savePolarImages(x, resolution, ...
+    %         fullfile(savePath, '/systolic', 'polar')), data.systolic);
+    %     arrayfun(@(x) savePolarImages(x, resolution, ...
+    %         fullfile(savePath, '/diastolic', 'polar')), data.diastolic);
+    %
     waitbar(iFile/nFiles);
 end
 close(h);
 diary OFF;
+end
+
+%-----------------------------------
+function saveImages(imSet, resolution, savePath)
+%-----------------------------------
+
+% Resample image set.
+imSet = resampleImages(imSet, resolution);
+
+% Create save folders.
+apicalPath = fullfile(savePath, 'apical');
+basalPath = fullfile(savePath, 'basal');
+midventPath = fullfile(savePath, 'midventricular');
+if exist(savePath, 'dir') ~= 1
+    try
+        mkdir(fullfile(apicalPath, 'images'));
+        mkdir(fullfile(apicalPath,'labels'));
+        mkdir(fullfile(basalPath, 'images'));
+        mkdir(fullfile(basalPath, 'labels'));
+        mkdir(fullfile(midventPath, 'images'));
+        mkdir(fullfile(midventPath, 'labels'));
+    catch
+    end
+end
+
+nImages = size(imSet.IM, 3);
+radius = 29; % Corresponding to 87x87mm crops
+
+fprintf('Generating images from %s \n', imSet.DataSetName);
+for iImage = 1:nImages
+    %     try
+    % Decide what folder to save into.
+    if iImage < 3
+        distances = sqrt(...
+            abs(imSet.Endo(:,1,iImage) - imSet.Epi(:,1,iImage)).^2 + ...
+            abs(imSet.Endo(:,2,iImage) - imSet.Epi(:,2,iImage)).^2)*...
+            imSet.ResolutionX;
+        if sum(distances < 2) > 7 % I question this number
+            saveFolder = basalPath;
+        else
+            saveFolder = midventPath;
+        end
+    elseif iImage == nImages
+        saveFolder = apicalPath;
+    else
+        saveFolder = midventPath;
+    end
+    
+    im = imSet.IM(:,:,iImage);
+    centerX = round(imSet.Center(1,iImage));
+    centerY = round(imSet.Center(2,iImage));
+    
+    % If we will crop outside the image, zero pad.
+    if radius > min([centerX - 1, size(im, 1) - centerX, ...
+            centerY - 1, size(im, 2) - centerY])
+        
+        im = padarray(im, [radius radius] , 0, 'both');
+        centerX = centerX + radius;
+        centerY = centerY + radius;
+        imSet.Endo(:,:,iImage) = imSet.Endo(:,:,iImage) + radius;
+        imSet.Epi(:,:,iImage) = imSet.Epi(:,:,iImage) + radius;
+    end
+    
+    % Generate mask.
+    xSize = size(im, 1);
+    ySize = size(im, 2);
+    endoMask = im2uint8(poly2mask(imSet.Endo(:,2,iImage), ...
+        imSet.Endo(:,1,iImage), xSize, ySize));
+    epiMask = im2uint8(poly2mask(imSet.Epi(:,2,iImage), ...
+        imSet.Epi(:,1,iImage), xSize, ySize));
+    mask = epiMask - endoMask;
+    
+    % Crop and resize image and mask to 128x128.
+    im = imresize(im((centerX - radius):(centerX + radius), ...
+        (centerY - radius):(centerY + radius)),[128 128]);
+    mask = imresize(mask((centerX - radius):(centerX + radius), ...
+        (centerY - radius):(centerY + radius)),[128 128]);
+    
+    % Save the images.
+    [~,datasetName,~] = fileparts(imSet.DataSetName);
+    imwrite(im, fullfile(saveFolder, 'images', ...
+        [datasetName '_' imSet.FileName '_' num2str(iImage) '.png']), 'png');
+    imwrite(mask, fullfile(saveFolder, 'labels', ...
+        [datasetName '_' imSet.FileName '_' num2str(iImage) '.png']), 'png');
+    
+    % Save images into same
+    mergedFolder = '\\147.220.31.56\guests\MattisNilsson\LV_Dataset\images\cart\merged\';
+    imwrite(im, fullfile(mergedFolder, 'images', ...
+        [datasetName '_' imSet.FileName '_' num2str(iImage) '.png']), 'png');
+    imwrite(mask, fullfile(mergedFolder, 'labels', ...
+        [datasetName '_' imSet.FileName '_' num2str(iImage) '.png']), 'png');
+    %     catch e
+    %         getReport(e)
+    %     end
+end
+end
+
+%---------------------------------------
+function mask = createMask(outsize,y,x)
+%---------------------------------------
+%Function to generate a mask from a polygon represented with the vectors x
+%and y.
+
+%Check if NaN then return empty
+if any(isnan(x)) || any(isnan(y))
+    mask = false(outsize);
+    return;
+end
+
+mask = false(outsize);
+x = interp1(x,linspace(1,length(x),1000));
+y = interp1(y,linspace(1,length(y),1000));
+mask(sub2ind(outsize,round(x),round(y))) = true;
+mask = imfill(mask, 4, 'holes');
 end
 
 %-----------------------------------
@@ -82,7 +194,7 @@ if exist(savePath, 'dir') ~= 7
     mkdir(fullfile(midventPath, 'labels'));
 end
 
-% fprintf('Generating images from %s \n', imSet.DataSetName);
+fprintf('Generating images from %s \n', imSet.DataSetName);
 for iImage = 1:nImages
     try
         polarIm = NaN(nRadPoints, nAngPoints);
@@ -212,112 +324,6 @@ if nSkipped > 0
     fprintf('\n Skipped %i images in imageset %s %s. \n', nSkipped, ...
         imSet.DataSetName, imSet.FileName);
 end
-end
-
-%-----------------------------------
-function saveImages(imSet, resolution, savePath)
-%-----------------------------------
-
-% Resample image set.
-imSet = resampleImages(imSet, resolution);
-
-% Create save folders.
-apicalPath = fullfile(savePath, 'apical');
-basalPath = fullfile(savePath, 'basal');
-midventPath = fullfile(savePath, 'midventricular');
-if exist(savePath, 'dir') ~= 7
-    try
-        mkdir(fullfile(apicalPath, 'images'));
-        mkdir(fullfile(apicalPath,'labels'));
-        mkdir(fullfile(basalPath, 'images'));
-        mkdir(fullfile(basalPath, 'labels'));
-        mkdir(fullfile(midventPath, 'images'));
-        mkdir(fullfile(midventPath, 'labels'));
-    catch
-    end
-end
-
-nImages = size(imSet.IM, 3);
-xSize = size(imSet.IM, 1);
-ySize = size(imSet.IM, 2);
-radius = 27;
-
-fprintf('Generating images from %s \n', imSet.DataSetName);
-for iImage = 1:nImages
-%     try
-
-        if iImage < 3
-            distances = sqrt(...
-                abs(imSet.Endo(:,1,iImage) - imSet.Epi(:,1,iImage)).^2 + ...
-                abs(imSet.Endo(:,2,iImage) - imSet.Epi(:,2,iImage)).^2)*...
-                imSet.ResolutionX;
-            % I question this number
-            if sum(distances < 2) > 7
-                saveFolder = basalPath;
-            else
-                saveFolder = midventPath;
-            end
-        elseif iImage == nImages
-            saveFolder = apicalPath;
-        else
-            saveFolder = midventPath;
-        end
-        
-        % If we will crop outside the image, zero pad.
-        if radius > min([imSet.Center(1,iImage), ...
-                size(imSet.IM, 1) - imSet.Center(1,iImage), ...
-                imSet.Center(2,iImage), ...
-                size(imSet.IM, 2) - imSet.Center(2,iImage)])
-            imSet.IM = padarray(imSet.IM, [28 28] , 0, 'both');
-        end
-        
-        centerX = round(imSet.Center(1,iImage));
-        centerY = round(imSet.Center(2,iImage));
-        
-        % Crop and resize image.
-        im = imresize(imSet.IM((centerX - 14):(centerX + 14), ...
-            (centerY - 14):(centerY + 14),iImage),[128 128]);
-        
-         % Generate mask.
-        endoMask = im2uint8(createMask([xSize ySize], ...
-            imSet.Endo(:,1,iImage), imSet.Endo(:,2,iImage)));
-        epiMask = im2uint8(createMask([xSize ySize], ...
-            imSet.Epi(:,1,iImage), imSet.Epi(:,2,iImage)));
-        mask = epiMask - endoMask;
-        
-        % Crop and resize mask.
-        mask = imresize(mask((centerX - radius):(centerX + radius), ...
-            (centerY - radius):(centerY + radius)),[128 128]);
-        
-         % Save the images.
-        [~,datasetName,~] = fileparts(imSet.DataSetName);
-        imwrite(im, fullfile(saveFolder, 'images', ...
-            [datasetName '_' imSet.FileName '_' num2str(iImage) '.png']), 'png');
-        imwrite(mask, fullfile(saveFolder, 'labels', ...
-            [datasetName '_' imSet.FileName '_' num2str(iImage) '.png']), 'png');
-%     catch e
-%         getReport(e)
-%     end
-end
-end
-
-%---------------------------------------
-function mask = createMask(outsize,y,x)
-%---------------------------------------
-%Function to generate a mask from a polygon represented with the vectors x
-%and y.
-
-%Check if NaN then return empty
-if any(isnan(x)) || any(isnan(y))
-    mask = false(outsize);
-    return;
-end
-
-mask = false(outsize);
-x = interp1(x,linspace(1,length(x),1000));
-y = interp1(y,linspace(1,length(y),1000));
-mask(sub2ind(outsize,round(x),round(y))) = true;
-mask = imfill(mask, 4, 'holes');
 end
 
 %---------------------------------------

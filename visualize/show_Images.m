@@ -10,7 +10,7 @@ labelFiles = dir([labelDir filesep '*.png']);
 
 fileNames = extractfield(imFiles, 'name');
 nFiles = length(fileNames);
-
+%%
 % Name classes.
 classNames = [
     "Myocardium"
@@ -23,7 +23,7 @@ pxds = pixelLabelDatastore(labelDir, classNames, labelIDs);
 nImages = numel(imds.Files);
 
 h = figure(1);
-set(h, 'Units', 'Normalized', 'OuterPosition', [0, 0.04, 1, 0.96]);
+% set(h, 'Units', 'Normalized', 'OuterPosition', [0, 0.04, 1, 0.96]);
 
 for iImage = 1:nImages
     
@@ -32,11 +32,9 @@ for iImage = 1:nImages
     B = labeloverlay(im,label,'IncludedLabels',"Myocardium", 'Transparency', 0.7);
     
     [~,name,~] = fileparts(imds.Files{iImage});
-%     set('Units', 'Normalized', 'OuterPosition', [0, 0.04, 1, 0.96]);
-    h = imshow(B);
-%     set(h, 'Units', 'Normalized', 'OuterPosition', [0, 0.04, 1, 0.96]);
-
-    drawnow;
+    h = imshow(B, 'Border', 'tight','InitialMagnification', 'fit');
     title(name)
-    pause(0.2);
+    drawnow;
+    
+    pause();
 end
