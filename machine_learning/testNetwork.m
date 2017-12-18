@@ -26,10 +26,6 @@ for iImage = 1:numTestingImages
 % I = read(
 figure;
 expectedResult = read(pxdsTest);
-
-
-
-
 iou = jaccard(C, expectedResult);
 table(classNames,iou)
 end

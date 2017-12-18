@@ -10,6 +10,14 @@ dirs{3,2} = '\\147.220.31.56\guests\MattisNilsson\LV_Dataset\images\cartesian\me
 % Choices
 savePath = uigetdir('*.mat', 'Choose a path to save the networks into.');
 ifPlot = 0;
+verbose = 1;
+miniBatchSize = 24;
+maxEpochs = 200;
+initLearnRate = 1e-2;
+learnRateDropFactor = 0.1;
+learnRateDropPeriod = 50;
+L2reg = 0.0005;
+momentum = 0.9;
 
 if ifPlot == 1
     plotChoice = 'training-progress';
@@ -26,7 +34,7 @@ labelIDs = [255 0];
 numClasses = numel(classNames);
 
 for i = 1:3
-    dirName = dirs{1,1};
+    dirName = dirs{i,1};
     dataDir = dirs{i,2};
     imDir = fullfile(dataDir, 'images');
     labelDir = fullfile(dataDir,'labels');
@@ -35,13 +43,13 @@ for i = 1:3
     % Create data stores.
     imds = imageDatastore(imDir);
     pxds = pixelLabelDatastore(labelDir, classNames, labelIDs);
-
+    
     % Partition data.
     [imdsTrain, imdsTest, pxdsTrain, pxdsTest] = partitionData(imds,pxds);
     % [imdsTrain, imdsTest, ...
     %     pxdsTrain, pxdsTest, ...
     %     imdsValid, pxdsValid] = partitionData3(imds,pxds);
-
+    
     numTrainingImages = numel(imdsTrain.Files);
     numTestingImages = numel(imdsTest.Files);
     
@@ -53,7 +61,7 @@ for i = 1:3
         validationData{1} = cat(4, validIm{:});
         validationData{2} = cat(4, validLabel{:});
     end
-
+    
     % Create the SegNet network.
     lgraph = segnetLayers(imSize, numClasses , 5);
     
@@ -69,37 +77,41 @@ for i = 1:3
     lgraph = removeLayers(lgraph, 'pixelLabels');
     lgraph = addLayers(lgraph, pxLayer);
     lgraph = connectLayers(lgraph, 'softmax' ,'labels');
-
+    
+    
     % Training options.
+    verboseFreq = round(numTrainingImages/miniBatchSize);
     options = trainingOptions('sgdm', ...
-        'InitialLearnRate', 1e-2, ...
+        'InitialLearnRate', initLearnRate, ...
         'LearnRateSchedule', 'piecewise',...
-        'LearnRateDropFactor', 0.1,...
-        'LearnRateDropPeriod', 50,...
-        'L2Regularization', 0.0005, ...
-        'Momentum', 0.9, ...
-        'MaxEpochs', 10, ...
-        'MiniBatchSize', 24, ...
+        'LearnRateDropFactor', learnRateDropFactor,...
+        'LearnRateDropPeriod', learnRateDropPeriod,...
+        'L2Regularization', L2reg, ...
+        'Momentum', momentum, ...
+        'MaxEpochs', maxEpochs, ...
+        'MiniBatchSize', miniBatchSize, ...
         'Shuffle', 'every-epoch', ...
-        'Verbose', 1, ...
-        'VerboseFrequency', 100, ...
+        'Verbose', verbose, ...
+        'VerboseFrequency', verboseFreq, ...
         'Plots', plotChoice, ...
         'CheckpointPath', fullfile(savePath, dirName));
-
+    
     % Augmentation options.
     augmenter = imageDataAugmenter(...
         'RandXTranslation', [-5 5], ...
         'RandYTranslation',[-5 5]);
-%         'RandXScale', [0.05 0.1], ...
-%         'RandYScale', [0.05 0.1]);
+    %         'RandXScale', [0.05 0.1], ...
+    %         'RandYScale', [0.05 0.1]);
     
     % Generate augmented training set.
     trainSource = pixelLabelImageSource(imdsTrain, pxdsTrain, ...
         'DataAugmentation', augmenter);
     
-    fprintf('Training %s network\n', dirName);
+    save(fullfile(savePath, dirName, 'workspace_pretraining.mat'));
+    
+    fprintf('Training SegNet on the %s dataset.\n', dirName);
     [net, info] = trainNetwork(trainSource, lgraph, options);
-    save([fullfile(savePath, dirName) 'workspace.mat']);
+    save(fullfile(savePath, dirName, 'workspace.mat'));
 end
 
 %function trainSegNet(network, trainOptions, imdsTrain, pxdsTrain, savePath)
@@ -111,7 +123,7 @@ frequency = tbl.PixelCount/sum(tbl.PixelCount);
 
 figure
 bar(1:numClasses,frequency)
-xticks(1:numClasses) 
+xticks(1:numClasses)
 xticklabels(tbl.Name)
 xtickangle(45)
 ylabel('Frequency')
@@ -120,9 +132,9 @@ end
 function [imdsTrain, imdsTest, pxdsTrain, pxdsTest] = partitionData(imds, pxds)
 % Partition CamVid data by randomly selecting 80% of the data for training. The
 % rest is used for testing.
-    
+
 % Set initial random state for example reproducibility.
-rng(0); 
+rng(0);
 numFiles = numel(imds.Files);
 shuffledIndices = randperm(numFiles);
 
@@ -151,12 +163,12 @@ pxdsTrain = pixelLabelDatastore(trainingLabels, classes, labelIDs);
 pxdsTest = pixelLabelDatastore(testLabels, classes, labelIDs);
 end
 
-function [imdsTrain, imdsTest, pxdsTrain, pxdsTest, imdsValid, pxdsValid] ... 
+function [imdsTrain, imdsTest, pxdsTrain, pxdsTest, imdsValid, pxdsValid] ...
     = partitionData3(imds, pxds)
 % Randomly partition datastore into training, testing and validation sets.
 
 % Set initial random state for example reproducibility.
-rng(0); 
+rng(0);
 numFiles = numel(imds.Files);
 shuffledIndices = randperm(numFiles);
 
