@@ -26,8 +26,9 @@ for iImage = 1:numTestingImages
 % I = read(
 figure;
 expectedResult = read(pxdsTest);
-iou = jaccard(C, expectedResult);
-table(classNames,iou)
+jacc = jaccard(C, expectedResult);
+dic = dice(C, expectedResult);
+table(classNames, jacc, dice)
 end
 %%
 pxdsResults = semanticseg(imdsTest,net,'WriteLocation',tempdir,'Verbose',false);
