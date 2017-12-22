@@ -4,7 +4,7 @@ dirs{1,1} = 'systolic';
 dirs{1,2} = '\\147.220.31.56\guests\MattisNilsson\LV_Dataset\images\cartesian\sys\';
 dirs{2,1} = 'diastolic';
 dirs{2,2} = '\\147.220.31.56\guests\MattisNilsson\LV_Dataset\images\cartesian\dia\';
-dirs{3,1} = 'merged';
+dirs{3,1} = 'merged2';
 dirs{3,2} = '\\147.220.31.56\guests\MattisNilsson\LV_Dataset\images\cartesian\merged\';
 
 % Choices
@@ -33,12 +33,13 @@ classNames = [
 labelIDs = [255 0];
 numClasses = numel(classNames);
 
-for i = 1:3
+for i = 3:3
     dirName = dirs{i,1};
     dataDir = dirs{i,2};
     imDir = fullfile(dataDir, 'images');
     labelDir = fullfile(dataDir,'labels');
-    mkdir(fullfile(savePath, dirName));
+    saveSetPath = fullfile(savePath, dirName);
+    mkdir(saveSetPath);
     
     % Create data stores.
     imds = imageDatastore(imDir);
@@ -107,11 +108,11 @@ for i = 1:3
     trainSource = pixelLabelImageSource(imdsTrain, pxdsTrain, ...
         'DataAugmentation', augmenter);
     
-    save(fullfile(savePath, dirName, 'workspace_pretraining.mat'));
-    
+    save(fullfile(saveSetPath, 'workspace_pretraining.mat'));
+        
     fprintf('Training SegNet on the %s dataset.\n', dirName);
     [net, info] = trainNetwork(trainSource, lgraph, options);
-    save(fullfile(savePath, dirName, 'workspace.mat'));
+    save(fullfile(saveSetPath, 'workspace.mat'));
 end
 
 %function trainSegNet(network, trainOptions, imdsTrain, pxdsTrain, savePath)

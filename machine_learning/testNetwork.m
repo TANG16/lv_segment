@@ -1,3 +1,5 @@
+
+
 %%
 I = read(imdsTest);
 C = semanticseg(I, net);
@@ -15,8 +17,6 @@ for iImage = 1:numTestingImages
     actual = uint8(C);
     figure(2)
     imshowpair(actual, expected)
-    
-    
     pause()
 end
 % pixelLabelColorbar(cmap, classes);
