@@ -3,7 +3,7 @@
     'Select a .mat file of images to segment.');
 [networkName, networkPath] = uigetfile('', ...
     'Select network to use for segmentation.');
-net = load(fullfile(networkPath, networkName));
+% load(fullfile(networkPath, networkName));
 data = load(fullfile(imagePath, imageName));
 % Choose where to save segmentations.
 savePath = uigetdir(pwd, 'Select a folder to save the results into.');
@@ -50,34 +50,49 @@ for iSet = 1:nSets
         
         % Segment the roi image using the neural network.
         C = semanticseg(imCrop, net);
+        figure(1);
+        B = labeloverlay(imCrop, C, 'IncludedLabels', "Myocardium", ...
+            'Transparency',0.9, 'Colormap', [0, 0.5, 0; 1, 1, 1]);
+        imshow(B)
+        
+        C = (C == "Myocardium");
         contours = bwboundaries(C);
         
         if length(contours) > 2
-            C = bwareaopen(C, 10);
+            % Extract the correct contours, number 2 and 3 of the largest
+            % contours (largest is around the image).
+            lengths = cellfun(@length,contours);
+            [~, idx] = sort(lengths, 'descend');
+            contour = cell(1,2);
+            contour{1} = contours{idx(2)};
+            contour{2} = contours{idx(3)};
+        else
+            contour = contours;
         end
         
         % Resize the contour to the original image.
         for i = 1:2
-            contours{i}(:,1) = (contours{i}(:,1) + ...
-                (centerX - radius - 1)) * cropSize/128;
-            contours{i}(:,2) = (contours{i}(:,2) + ...
-                (centerY - radius - 1)) * cropSize/128;
+            contour{i}(:,1) = contour{i}(:,1) * cropSize/128 + ...
+                (centerX - radius);
+            contour{i}(:,2) = contour{i}(:,2) * cropSize/128 + ...
+                (centerY - radius);
             % Remove padding.
             if padded
-                contours{i} = contours{i} + radius;
+                contour{i} = contour{i} + radius;
             end
         end
         
-        figure;
+        figure(2);
         imagesc(pat.IM(:,:,iImage)); colormap gray; axis image; colorbar;
         hold on
         plot(pat.Endo(:,2,iImage), ...
             pat.Endo(:,1,iImage), 'g-');
         plot(pat.Epi(:,2,iImage), ...
             pat.Epi(:,1,iImage), 'g-');
-        visboundaries(contours);
+        plot(contour{1}(:,2), contour{1}(:,1), 'r-')
+        plot(contour{2}(:,2), contour{2}(:,1), 'r-')
+        hold off
         pause();
-        
         padded = 0;
     end
 end

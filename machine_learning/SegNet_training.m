@@ -4,7 +4,7 @@ dirs{1,1} = 'systolic';
 dirs{1,2} = '\\147.220.31.56\guests\MattisNilsson\LV_Dataset\images\cartesian\sys\';
 dirs{2,1} = 'diastolic';
 dirs{2,2} = '\\147.220.31.56\guests\MattisNilsson\LV_Dataset\images\cartesian\dia\';
-dirs{3,1} = 'merged2';
+dirs{3,1} = 'merged';
 dirs{3,2} = '\\147.220.31.56\guests\MattisNilsson\LV_Dataset\images\cartesian\merged\';
 
 % Choices
@@ -33,7 +33,7 @@ classNames = [
 labelIDs = [255 0];
 numClasses = numel(classNames);
 
-for i = 3:3
+for i = 1:3
     dirName = dirs{i,1};
     dataDir = dirs{i,2};
     imDir = fullfile(dataDir, 'images');
@@ -140,7 +140,7 @@ numFiles = numel(imds.Files);
 shuffledIndices = randperm(numFiles);
 
 % Use 80% of the images for training.
-nTest = round(0.80 * numFiles);
+nTest = round(0.20 * numFiles);
 trainingIdx = shuffledIndices(1:nTest);
 
 % Use the rest for testing.
