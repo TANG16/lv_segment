@@ -7,6 +7,13 @@ dirs{2,2} = '\\147.220.31.56\guests\MattisNilsson\LV_Dataset\images\cartesian\di
 dirs{3,1} = 'merged';
 dirs{3,2} = '\\147.220.31.56\guests\MattisNilsson\LV_Dataset\images\cartesian\merged\';
 
+
+%%
+
+
+
+
+%%
 % Choices
 savePath = uigetdir('*.mat', 'Choose a path to save the networks into.');
 ifPlot = 0;
