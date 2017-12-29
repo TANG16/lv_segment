@@ -20,18 +20,19 @@ imdsTrain = imageDatastore([diaImdsTrain.Files; sysImdsTrain.Files]);
 pxdsTrain = pixelLabelDatastore([diaPxdsTrain.Files; sysPxdsTrain.Files], ...
     classNames, labelIDs);
 
-imdsTest.Files = [diaImdsTest.Files; sysImdsTest.Files];
-pxdsTest.Files = [diaPxdsTest.Files; sysPxdsTest.Files];
+imdsTest = imageDatastore([diaImdsTest.Files; sysImdsTest.Files]);
+pxdsTest = pixelLabelDatastore([diaPxdsTest.Files; sysPxdsTest.Files], ...
+    classNames, labelIDs);
 
 % Count image frequency.
-imageFreq = (tblSys.PixelCount + tblDia.Pixelcount)./ ...
+imageFreq = (tblSys.PixelCount + tblDia.PixelCount)./ ...
     (tblSys.ImagePixelCount + tblDia.ImagePixelCount);
 
 classWeights = median(imageFreq) ./ imageFreq;
 
 numTrainingImages = numel(imdsTrain.Files);
 numTestingImages = numel(imdsTest.Files);
-
+%%
 % Choices
 saveSetPath = '\\147.220.31.56\guests\MattisNilsson\networks\SegNet\200_epoch\merged_sameTestdata';
 mkdir(saveSetPath);
@@ -125,11 +126,12 @@ imdsTrain = imageDatastore([diaImdsTrain.Files; sysImdsTrain.Files]);
 pxdsTrain = pixelLabelDatastore([diaPxdsTrain.Files; sysPxdsTrain.Files], ...
     classNames, labelIDs);
 
-imdsTest.Files = [diaImdsTest.Files; sysImdsTest.Files];
-pxdsTest.Files = [diaPxdsTest.Files; sysPxdsTest.Files];
+imdsTest = imageDatastore([diaImdsTest.Files; sysImdsTest.Files]);
+pxdsTest = pixelLabelDatastore([diaPxdsTest.Files; sysPxdsTest.Files], ...
+    classNames, labelIDs);
 
 % Count image frequency.
-imageFreq = (tblSys.PixelCount + tblDia.Pixelcount)./ ...
+imageFreq = (tblSys.PixelCount + tblDia.PixelCount)./ ...
     (tblSys.ImagePixelCount + tblDia.ImagePixelCount);
 
 classWeights = median(imageFreq) ./ imageFreq;
