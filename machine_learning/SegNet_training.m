@@ -115,8 +115,11 @@ for i = 1:3
     save(fullfile(saveSetPath, 'workspace.mat'));
 end
 
-%function trainSegNet(network, trainOptions, imdsTrain, pxdsTrain, savePath)
-% end
+
+
+
+
+
 
 function visualiseClasses(tbl)
 % Show classes.
