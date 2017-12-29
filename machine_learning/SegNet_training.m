@@ -150,7 +150,7 @@ numFiles = numel(imds.Files);
 shuffledIndices = randperm(numFiles);
 
 % Use 80% of the images for training.
-nTest = round(0.20 * numFiles);
+nTest = round(0.8 * numFiles);
 trainingIdx = shuffledIndices(1:nTest);
 
 % Use the rest for testing.
