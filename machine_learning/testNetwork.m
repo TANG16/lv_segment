@@ -62,3 +62,5 @@ metrics = evaluateSemanticSegmentation(pxdsResults,pxdsTest,'Verbose',false);
 metrics.DataSetMetrics
 metrics.ClassMetrics
 metrics.NormalizedConfusionMatrix
+
+

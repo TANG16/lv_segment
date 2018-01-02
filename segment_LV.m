@@ -14,7 +14,7 @@ dataSet = data.systolic;
 % dataSet = [data.systolic data.diastolic];
 
 % Constants.
-radius = 27;
+radius = 29;
 cropSize = radius*2+1;
 padded = 0; % Pad switch.
 
@@ -81,6 +81,9 @@ for iSet = 1:nSets
                 contour{i} = contour{i} + radius;
             end
         end
+        
+        % DOES IT USE THE SAME SPATIAL RESOLUTION AS THE ORIGINAL
+        % IMAGE!!?!?
         
         figure(2);
         imagesc(pat.IM(:,:,iImage)); colormap gray; axis image; colorbar;

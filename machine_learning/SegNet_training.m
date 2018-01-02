@@ -7,13 +7,6 @@ dirs{2,2} = '\\147.220.31.56\guests\MattisNilsson\LV_Dataset\images\cartesian\di
 dirs{3,1} = 'merged';
 dirs{3,2} = '\\147.220.31.56\guests\MattisNilsson\LV_Dataset\images\cartesian\merged\';
 
-
-%%
-
-
-
-
-%%
 % Choices
 savePath = uigetdir('*.mat', 'Choose a path to save the networks into.');
 ifPlot = 0;
@@ -73,6 +66,12 @@ for i = 1:3
     % Create the SegNet network.
     lgraph = segnetLayers(imSize, numClasses , 5);
     
+    % Actual SegNet layers.
+    %lgraph = segnetLayers([128 128 1], 2 , 5, ...
+    %    'NumConvolutionLayers', [2 2 3 3 3], ...
+    %    'NumOutputChannels', [64 128 256 512 512], ...
+    %    'FilterSize', 3);
+    
     % Calculate class weights.
     tbl = countEachLabel(pxds);
     imageFreq = tbl.PixelCount ./ tbl.ImagePixelCount;
@@ -121,12 +120,6 @@ for i = 1:3
     [net, info] = trainNetwork(trainSource, lgraph, options);
     save(fullfile(saveSetPath, 'workspace.mat'));
 end
-
-
-
-
-
-
 
 function visualiseClasses(tbl)
 % Show classes.
