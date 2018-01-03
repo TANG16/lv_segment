@@ -32,7 +32,7 @@ classWeights = median(imageFreq) ./ imageFreq;
 
 numTrainingImages = numel(imdsTrain.Files);
 numTestingImages = numel(imdsTest.Files);
-%%
+
 % Choices
 saveSetPath = '\\147.220.31.56\guests\MattisNilsson\networks\SegNet\200_epoch\merged_sameTestdata';
 mkdir(saveSetPath);
@@ -98,7 +98,7 @@ trainSource = pixelLabelImageSource(imdsTrain, pxdsTrain, ...
 
 save(fullfile(saveSetPath, 'workspace_pretraining.mat'));
 
-fprintf('Training SegNet on the %s dataset.\n', dirName);
+fprintf('Training SegNet on the merged dataset.\n');
 [net, info] = trainNetwork(trainSource, lgraph, options);
 save(fullfile(saveSetPath, 'workspace.mat'));
 
@@ -204,6 +204,6 @@ trainSource = pixelLabelImageSource(imdsTrain, pxdsTrain, ...
 
 save(fullfile(saveSetPath, 'workspace_pretraining.mat'));
 
-fprintf('Training SegNet on the %s dataset.\n', dirName);
+fprintf('Training SegNet on the merged dataset.\n');
 [net, info] = trainNetwork(trainSource, lgraph, options);
 save(fullfile(saveSetPath, 'workspace.mat'));
