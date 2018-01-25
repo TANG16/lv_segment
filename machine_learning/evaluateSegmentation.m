@@ -24,17 +24,6 @@ mergedSysMetrics = evaluateSemanticSegmentation(pxdsResults,sysPxdsTest,'Verbose
 pxdsResults = semanticseg(diaImdsTest,net,'WriteLocation',tempdir,'Verbose',false);
 mergedDiaMetrics = evaluateSemanticSegmentation(pxdsResults,diaPxdsTest,'Verbose',false);
 
-
-%%
-
-for iImage = 1:numTestingImages
-    % I = read(
-    figure;
-    expected = read(pxdsTest);
-    jacc = jaccard(C, expected);
-    dic = dice(C, expected);
-    table(classNames, jacc, dice)
-end
 %%
 pxdsResults = semanticseg(imdsTest,net,'WriteLocation',tempdir,'Verbose',false);
 metrics = evaluateSemanticSegmentation(pxdsResults,pxdsTest,'Verbose',false);
@@ -42,5 +31,3 @@ metrics = evaluateSemanticSegmentation(pxdsResults,pxdsTest,'Verbose',false);
 metrics.DataSetMetrics
 metrics.ClassMetrics
 metrics.NormalizedConfusionMatrix
-
-

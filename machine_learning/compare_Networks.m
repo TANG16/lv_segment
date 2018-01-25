@@ -58,5 +58,3 @@ wins = sum(SegFullBF >= SegIshFullBF);
 winRatio = wins/length(SegFullBF)
 fprintf('Full: \n Segnet has a %d winrate over SegIshNet \n', winRatio);
 
-
-
